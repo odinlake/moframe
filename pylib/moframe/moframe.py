@@ -7,6 +7,8 @@ from moframe.moimage import MOImage
 
 
 class MOFrameWindow(QMainWindow):
+    reverse = False
+
     def __init__(self, cfg=None):
         QMainWindow.__init__(self)
         self.config = cfg or {}
@@ -14,9 +16,8 @@ class MOFrameWindow(QMainWindow):
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setStyleSheet("""
 QWidget {
-    background: #8888ff;
-    border-width: 5px;
-    border-color: red;
+    background: #221111;
+    font-weight: bold;
 }
         """)
 
@@ -24,7 +25,7 @@ QWidget {
         self.imagemodel.start()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
-        self.timer.start(1000)
+        self.timer.start(cfg.get("photos-delay", 1.0) * 1000)
 
         self.topwidget = QWidget(self)
         self.setCentralWidget(self.topwidget)
@@ -42,10 +43,18 @@ QWidget {
         """
         Update display as needed.
         """
-        root, filename, img = self.imagemodel.nextImage()
-        self.helptext.hide()
-        self.photoframe.setImage(img)
-        self.photoframe.show()
+        img = None
+        if self.imagemodel.idx == -1 and not self.reverse:
+            root, filename, img = self.imagemodel.nextImage()
+        elif self.reverse:
+            root, filename, img = self.imagemodel.prevImage()
+            if not self.imagemodel.hasPrevImage():
+                self.reverse = False
+                self.imagemodel.idx = -1
+        if img:
+            self.helptext.hide()
+            self.photoframe.setImage(img)
+            self.photoframe.show()
 
     def keyPressEvent(self, event):
         """
@@ -54,16 +63,29 @@ QWidget {
         Args:
             event: Qt event.
         """
+        self.helptext.hide()
+        self.photoframe.show()
+
         if event.key() == QtCore.Qt.Key_Escape:
             self.imagemodel.active = False
             self.imagemodel.join()
             self.close()
-        if event.key() == QtCore.Qt.Key_Space:
+        elif event.key() == QtCore.Qt.Key_Space:
             if self.windowState() & Qt.WindowMinimized:
                 self.setWindowState(Qt.WindowMaximized)
             else:
                 self.setMaximumSize(0, 0)
                 self.setWindowState(Qt.WindowMinimized)
+        elif event.key() == QtCore.Qt.Key_Left:
+            root, filename, img = self.imagemodel.prevImage()
+            self.photoframe.setImage(img)
+        elif event.key() == QtCore.Qt.Key_Right:
+            root, filename, img = self.imagemodel.nextImage()
+            self.photoframe.setImage(img)
+        elif event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
+            self.imagemodel.idx = -1
+        elif event.key() == QtCore.Qt.Key_Backspace:
+            self.reverse = not self.reverse
 
     def showEvent(self, event):
         """

@@ -73,6 +73,5 @@ QWidget {
             event: Qt event.
         """
         self.showFullScreen()
-        print(self.width())
-        self.setMaximumSize(self.width(), self.height())
+        print("window size:", self.width(), self.height())
 

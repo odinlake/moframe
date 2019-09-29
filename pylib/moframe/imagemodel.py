@@ -23,6 +23,7 @@ class ImageModel(threading.Thread):
         """
         Start listing and pre-loading images. Then continue to pre-load images as needed.
         """
+        print("listing...", self.basepath)
         for (root, dirs, files) in os.walk(self.basepath):
             for file in files:
                 # jpeg files in dirs whose name do not start with underscore
@@ -45,13 +46,14 @@ class ImageModel(threading.Thread):
         if len(self.loaded) < 10:
             with self.lock:
                 candidates = self.categories[""] - set(self.loaded)
-                root, file = random.choice(tuple(candidates))
-                img = QImage(os.path.join(root, file))
-                if img.isNull():
-                    self.categories[""].remove((root, file))
-                else:
-                    self.loaded[(root, file)] = img
-                    print("loaded:", (root, file))
+                if candidates:
+                    root, file = random.choice(tuple(candidates))
+                    img = QImage(os.path.join(root, file))
+                    if img.isNull():
+                        self.categories[""].remove((root, file))
+                    else:
+                        self.loaded[(root, file)] = img
+                        print("loaded:", (root, file))
 
     def nextImage(self):
         """

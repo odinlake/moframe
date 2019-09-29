@@ -7,8 +7,9 @@ from moframe.moimage import MOImage
 
 
 class MOFrameWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, cfg=None):
         QMainWindow.__init__(self)
+        self.config = cfg or {}
         self.setWindowTitle("MOFrame")
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setStyleSheet("""
@@ -19,7 +20,7 @@ QWidget {
 }
         """)
 
-        self.imagemodel = ImageModel(r"F:\PhotoFrame")
+        self.imagemodel = ImageModel(cfg.get("photos-basepath", "."))
         self.imagemodel.start()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)

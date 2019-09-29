@@ -1,6 +1,7 @@
 from PyQt5.QtGui import QImage
 import threading
 import os
+import os.path
 from collections import defaultdict, deque
 import random
 import time
@@ -20,18 +21,19 @@ class ImageModel(threading.Thread):
 
     def run(self):
         """
-        Start listing and pre-loading images.
-        Continue to pre-load images as needed.
+        Start listing and pre-loading images. Then continue to pre-load images as needed.
         """
         for (root, dirs, files) in os.walk(self.basepath):
             for file in files:
-                if file.lower().endswith(".jpg"):
-                    self.categories[""].add((root, file))
-                    self.count += 1
-                    if self.count % 10 == 0:
-                        self.preloadStep()
-                    if not self.active:
-                        return
+                # jpeg files in dirs whose name do not start with underscore
+                if not os.path.split(root)[-1].startswith("_"):
+                    if file.lower().endswith(".jpg"):
+                        self.categories[""].add((root, file))
+                        self.count += 1
+                        if self.count % 10 == 0:
+                            self.preloadStep()
+                        if not self.active:
+                            return
         while self.active:
             self.preloadStep()
             time.sleep(0.1)

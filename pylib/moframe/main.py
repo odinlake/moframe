@@ -24,6 +24,7 @@ def main():
     app.changeOverrideCursor(Qt.BlankCursor)
     mainWin = MOFrameWindow(cfg)
     mainWin.showMaximized()
+    app.installEventFilter(mainWin)
     sys.exit( app.exec_() )
 
 

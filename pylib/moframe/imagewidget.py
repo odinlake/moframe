@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPainter, QColor, QFont
 
 
-class MOImage(QWidget):
+class ImageWidget(QWidget):
     image = None
 
     def setImage(self, img):

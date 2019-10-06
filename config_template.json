@@ -1,3 +1,14 @@
 {
-  "photos-basepath": "",
+  "widgets": [
+    {
+      "type": "Gallery",
+      "photos-basepath": "/home/username/photos",
+      "photos-delay": 1.0
+    },
+    {
+      "type": "Web",
+      "web-url": "http://example.com"
+    }
+  ]
 }
+

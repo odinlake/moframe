@@ -8,7 +8,7 @@ import time
 import gc
 
 
-class ImageModel(threading.Thread):
+class GalleryModel(threading.Thread):
     def __init__(self, basepath):
         threading.Thread.__init__(self)
         self.daemon = True

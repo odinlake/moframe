@@ -1,5 +1,6 @@
 {
-  "menu-delay": 5000.0,
+  "menu-delay": 2000.0,
+  "menu-button-font": "30px bold sans-serif",
   "widgets": [
     {
       "type": "Gallery",

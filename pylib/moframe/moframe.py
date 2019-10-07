@@ -11,19 +11,18 @@ class MOFrameButton(QPushButton):
         super().__init__(parent)
         self.parent = parent
         self.idx = idx
-        self.setStyleSheet("""
-            background-color: rgba(255, 240, 240, 0.6);
-            font: 40px bold sans-serif;
-            color: #221111;
-        """)
-        self.setText(parent.widgets()[idx].buttonName())
-        self.clicked.connect(lambda: self.parent.parent.setWidget(self.idx))
+        if idx == -1:
+            self.setText("close\nmenu")
+            self.clicked.connect(lambda: self.parent.parent.hideMenu())
+        else:
+            self.setText(parent.widgets()[idx].buttonName())
+            self.clicked.connect(lambda: self.parent.parent.setWidget(self.idx))
 
     def minimumSizeHint(self):
-        return QSize(0, 200)
+        return QSize(0, 100)
 
     def maximumSizeHint(self):
-        return QSize(300, 300)
+        return QSize(300, 250)
 
 
 class MOFrameMenu(QWidget):
@@ -31,12 +30,15 @@ class MOFrameMenu(QWidget):
         super().__init__(parent)
         self.parent = parent
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
         for idx, ww in enumerate(parent.central_widgets):
             button = MOFrameButton(self, idx)
             layout.addWidget(button)
         layout.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+        button = MOFrameButton(self, -1)
+        layout.addWidget(button)
 
         self.setAutoFillBackground(True)
         palette = QtGui.QPalette()
@@ -69,8 +71,8 @@ class MOFrameMenu(QWidget):
         qp = QtGui.QPainter()
         qp.begin(self)
         w, h = self.width(), self.height()
-        brush1 = QtGui.QBrush(QtGui.QColor(0x88, 0x88, 0x88, 0x88), Qt.SolidPattern)
-        brush2 = QtGui.QBrush(QtGui.QColor(0xff, 0x11, 0x11, 0xee), Qt.Dense6Pattern)
+        brush1 = QtGui.QBrush(QtGui.QColor(0x44, 0x44, 0x44, 0x88), Qt.SolidPattern)
+        brush2 = QtGui.QBrush(QtGui.QColor(0xaa, 0x00, 0x00, 0xff), Qt.Dense6Pattern)
         qp.fillRect(0, 0, w, h, brush1)
         qp.fillRect(0, 0, w, h, brush2)
         qp.end()
@@ -82,6 +84,8 @@ class MOFrameWindow(QMainWindow):
     def __init__(self, cfg=None):
         QMainWindow.__init__(self)
         self.config = cfg or {}
+        cfg.setdefault("menu-button-font", "30px bold sans-serif")
+
         self.setWindowTitle("MOFrame")
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setStyleSheet("""
@@ -89,7 +93,12 @@ QWidget {
     background: #221111;
     font-weight: bold;
 }
-        """)
+QPushButton {
+    background-color: rgba(20, 10, 10, 0.6);
+    font: %s;
+    color: #ffeeee;
+}
+        """ % (cfg["menu-button-font"]))
         self.central_widgets = []
 
         for widget_config in cfg.get("widgets", []):

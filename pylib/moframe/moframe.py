@@ -39,6 +39,15 @@ class MOFrameMenu(QWidget):
         palette.setColor(QtGui.QPalette.Background, Qt.red)
         self.setPalette(palette)
         self.setGeometry(100, 100, 300, 500)
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.timeout)
+
+    def timeout(self):
+        """
+        USed to hide the menu after some seconds of inactivity.
+        """
+        self.hide()
 
     def paintEvent(self, event):
         """
@@ -115,6 +124,9 @@ QWidget {
         if event.type() == QEvent.KeyPress:
             self.keyPressEvent(event)
             return True
+        elif event.type() in (QEvent.MouseMove, QEvent.MouseButtonPress):
+            self.menu.show()
+            self.menu.timer.start(self.config.get("menu-delay", 5000.0))
         res = super().eventFilter(source, event)
         return res
 

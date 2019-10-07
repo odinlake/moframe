@@ -27,6 +27,11 @@ class GalleryWidget(QWidget):
         layout.addWidget(self.helptext)
         layout.addWidget(self.photoframe)
 
+    def buttonName(self):
+        """
+        Returns: String representing a name suitable for a button.
+        """
+        return "Gallery\n" + self.config.get("title", "...")
 
     def update(self):
         """

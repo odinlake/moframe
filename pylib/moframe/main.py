@@ -21,8 +21,8 @@ def main():
 
     app = QtWidgets.QApplication(sys.argv)
     app.setOverrideCursor(Qt.BlankCursor)
-    app.changeOverrideCursor(Qt.BlankCursor)
-    mainWin = MOFrameWindow(cfg)
+    #app.changeOverrideCursor(Qt.BlankCursor)
+    mainWin = MOFrameWindow(cfg=cfg)
     mainWin.showMaximized()
     app.installEventFilter(mainWin)
     sys.exit( app.exec_() )

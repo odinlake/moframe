@@ -3,11 +3,13 @@
   "widgets": [
     {
       "type": "Gallery",
+      "title": "main",
       "photos-basepath": "/home/username/photos",
       "photos-delay": 1.0
     },
     {
       "type": "Web",
+      "title": "example",
       "web-url": "http://example.com"
     }
   ]

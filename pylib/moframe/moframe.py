@@ -7,13 +7,17 @@ from moframe.webwidget import WebWidget
 
 
 class MOFrameButton(QPushButton):
-    def __init__(self, parent):
+    def __init__(self, parent, idx):
         super().__init__(parent)
+        self.parent = parent
+        self.idx = idx
         self.setStyleSheet("""
             background-color: rgba(255, 240, 240, 0.6);
             font: 40px bold sans-serif;
             color: #221111;
         """)
+        self.setText(parent.widgets()[idx].buttonName())
+        self.clicked.connect(lambda: self.parent.parent.setWidget(self.idx))
 
     def minimumSizeHint(self):
         return QSize(0, 200)
@@ -25,11 +29,11 @@ class MOFrameButton(QPushButton):
 class MOFrameMenu(QWidget):
     def __init__(self, parent):
         super().__init__(parent)
+        self.parent = parent
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         for idx, ww in enumerate(parent.central_widgets):
-            button = MOFrameButton(self)
-            button.setText("Widget-%d" % idx)
+            button = MOFrameButton(self, idx)
             layout.addWidget(button)
         layout.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
@@ -43,11 +47,17 @@ class MOFrameMenu(QWidget):
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.timeout)
 
+    def widgets(self):
+        """
+        Returns: List of widgets to make buttons for.
+        """
+        return self.parent.central_widgets
+
     def timeout(self):
         """
         USed to hide the menu after some seconds of inactivity.
         """
-        self.hide()
+        self.parent.hideMenu()
 
     def paintEvent(self, event):
         """
@@ -59,9 +69,10 @@ class MOFrameMenu(QWidget):
         qp = QtGui.QPainter()
         qp.begin(self)
         w, h = self.width(), self.height()
-        qp.setBrush(Qt.Dense5Pattern)
-        qp.setPen(Qt.NoPen)
-        qp.fillRect(0, 0, w, h, Qt.Dense5Pattern)
+        brush1 = QtGui.QBrush(QtGui.QColor(0x88, 0x88, 0x88, 0x88), Qt.SolidPattern)
+        brush2 = QtGui.QBrush(QtGui.QColor(0xff, 0x11, 0x11, 0xee), Qt.Dense6Pattern)
+        qp.fillRect(0, 0, w, h, brush1)
+        qp.fillRect(0, 0, w, h, brush2)
         qp.end()
 
 
@@ -108,6 +119,24 @@ QWidget {
                 ww.hide()
         self.widgetindex = idx
         self.central_widgets[idx].show()
+        self.hideMenu()
+
+    def showMenu(self):
+        """
+        Display the menu and start its timeout.
+        """
+        app = QtWidgets.QApplication.instance()
+        self.menu.show()
+        self.menu.timer.start(self.config.get("menu-delay", 5000.0))
+        app.setOverrideCursor(Qt.ArrowCursor)
+
+    def hideMenu(self):
+        """
+        Hide the menu.
+        """
+        app = QtWidgets.QApplication.instance()
+        self.menu.hide()
+        app.setOverrideCursor(Qt.BlankCursor)
 
     def eventFilter(self, source, event):
         """
@@ -125,8 +154,7 @@ QWidget {
             self.keyPressEvent(event)
             return True
         elif event.type() in (QEvent.MouseMove, QEvent.MouseButtonPress):
-            self.menu.show()
-            self.menu.timer.start(self.config.get("menu-delay", 5000.0))
+            self.showMenu()
         res = super().eventFilter(source, event)
         return res
 

@@ -2,11 +2,12 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel
 from PyQt5.QtCore import QSize, Qt, QTimer
 
+from moframe.basewidget import BaseWidget
 from moframe.gallerymodel import GalleryModel
 from moframe.imagewidget import ImageWidget
 
 
-class GalleryWidget(QWidget):
+class GalleryWidget(BaseWidget):
     reverse = False
 
     def __init__(self, parent, cfg=None):
@@ -16,15 +17,9 @@ class GalleryWidget(QWidget):
         self.imagemodel.start()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
-        self.timer.start(cfg.get("photos-delay", 1.0) * 1000)
-
         self.photoframe = ImageWidget(self)
-        self.helptext = QLabel("Press Escape to Quit", self)
-        self.helptext.setAlignment(QtCore.Qt.AlignCenter)
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.helptext)
         layout.addWidget(self.photoframe)
 
     def buttonName(self):
@@ -46,14 +41,26 @@ class GalleryWidget(QWidget):
                 self.reverse = False
                 self.imagemodel.idx = -1
         if img:
-            self.helptext.hide()
             self.photoframe.setImage(img)
             self.photoframe.show()
+
+    def start(self):
+        """
+        Start or resume widget.
+        """
+        self.timer.start(self.config.get("photos-delay", 1.0) * 1000)
+
+    def pause(self):
+        """
+        Temporarily stop the widget from updating.
+        """
+        self.timer.stop()
 
     def stop(self):
         """
         Stop the gallery widget.
         """
+        self.pause()
         self.imagemodel.active = False
         self.imagemodel.join()
 
@@ -64,9 +71,7 @@ class GalleryWidget(QWidget):
         Args:
             event: Qt event.
         """
-        self.helptext.hide()
         self.photoframe.show()
-
         if event.key() == QtCore.Qt.Key_Left:
             root, filename, img = self.imagemodel.prevImage()
             self.photoframe.setImage(img)

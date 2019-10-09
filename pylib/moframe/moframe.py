@@ -4,6 +4,7 @@ from PyQt5.QtCore import QSize, Qt, QTimer, QEvent
 
 from moframe.gallerywidget import GalleryWidget
 from moframe.webwidget import WebWidget
+from moframe.camerawidget import CameraWidget
 
 
 class MOFrameButton(QPushButton):
@@ -106,6 +107,8 @@ QPushButton {
                 ww = GalleryWidget(self, cfg=widget_config)
             elif widget_config["type"] == "Web":
                 ww = WebWidget(self, cfg=widget_config)
+            elif widget_config["type"] == "Camera":
+                ww = CameraWidget(self, cfg=widget_config)
             self.central_widgets.append(ww)
 
         self.setCentralWidget(QWidget(self))
@@ -125,9 +128,11 @@ QPushButton {
         idx = idx % len(self.central_widgets)
         for ii, ww in enumerate(self.central_widgets):
             if ii != idx:
+                ww.pause()
                 ww.hide()
         self.widgetindex = idx
         self.central_widgets[idx].show()
+        self.central_widgets[idx].start()
         self.hideMenu()
 
     def showMenu(self):

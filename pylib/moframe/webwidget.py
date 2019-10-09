@@ -1,19 +1,17 @@
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel
 
-USING_WEBKIT = False
-
 try:
-    #from PyQt5.QtWebKitWidgets import QWebView, QWebPage
     from PyQt5.QtWebEngineWidgets import QWebEngineView
+    USING_WEBKIT = False
 except ImportError:
     from PyQt5.QtWebKitWidgets import QWebView
     USING_WEBKIT = True
 
+from moframe.basewidget import BaseWidget
 
-class WebWidget(QWidget):
-    reverse = False
 
+class WebWidget(BaseWidget):
     def __init__(self, parent, cfg=None):
         QWidget.__init__(self, parent)
         self.config = cfg or {}
@@ -37,19 +35,4 @@ QWidget {
         Returns: String representing a name suitable for a button.
         """
         return "Web\n" + self.config.get("title", "...")
-
-    def stop(self):
-        """
-        Stop the gallery widget.
-        """
-        pass
-
-    def keyPressEvent(self, event):
-        """
-        Handle keyboard commands.
-
-        Args:
-            event: Qt event.
-        """
-        pass
 

@@ -10,7 +10,8 @@
     },
     {
       "type": "Camera",
-      "title": "mirror"
+      "title": "mirror",
+      "invert": "xy"
     },
     {
       "type": "Web",

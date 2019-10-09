@@ -10,6 +10,7 @@ from moframe.basewidget import BaseWidget
 
 class CameraWidget(BaseWidget):
     image = None
+    paused = False
 
     def __init__(self, parent, cfg=None):
         QWidget.__init__(self, parent)
@@ -23,8 +24,14 @@ class CameraWidget(BaseWidget):
         """
         Update display as needed.
         """
+        invert = self.config.get("invert", "")
+        self.timer.stop()
         rval, frame = self.vc.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if "x" in invert:
+            frame = cv2.flip(frame, 1)
+        if "y" in invert:
+            frame = cv2.flip(frame, 0)
         image = QImage(frame, frame.shape[1], frame.shape[0], QImage.Format_RGB888)
         self.setImage(image)
 
@@ -59,6 +66,8 @@ class CameraWidget(BaseWidget):
             qp.setFont(QFont('Decorative', 10))
             qp.drawText(event.rect(), Qt.AlignCenter, "nothing to show...")
         qp.end()
+        if not self.paused:
+            self.timer.start(self.config.get("camera-delay", 0.1) * 1000)
 
     def buttonName(self):
         """
@@ -66,18 +75,19 @@ class CameraWidget(BaseWidget):
         """
         return "Camera\n" + self.config.get("title", "...")
 
-
     def start(self):
         """
         Start or resume widget.
         """
-        self.timer.start(self.config.get("camera-delay", 0.1) * 1000)
+        self.paused = False
+        self.timer.start(1)
 
     def pause(self):
         """
         Temporarily stop the widget from updating.
         """
         self.timer.stop()
+        self.paused = True
 
     def stop(self):
         """

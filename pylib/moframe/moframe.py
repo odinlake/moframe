@@ -19,6 +19,13 @@ class MOFrameButton(QPushButton):
             self.setText(parent.widgets()[idx].buttonName())
             self.clicked.connect(lambda: self.parent.parent.setWidget(self.idx))
 
+        # style background doesn't work on rpi
+        self.setAutoFillBackground(True)
+        pal = self.palette()
+        pal.setColor(QtGui.QPalette.Button, QtGui.QColor(20, 10, 10))
+        self.setPalette(pal)
+        self.update()
+
     def minimumSizeHint(self):
         return QSize(0, 100)
 
@@ -95,7 +102,6 @@ QWidget {
     font-weight: bold;
 }
 QPushButton {
-    background-color: rgba(20, 10, 10, 0.6);
     font: %s;
     color: #ffeeee;
 }

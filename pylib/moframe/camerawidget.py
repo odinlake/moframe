@@ -17,6 +17,7 @@ class CameraWidget(BaseWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
         self.vc = cv2.VideoCapture(cfg.get("camera-index", 0))
+        self.vc.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
 
     def update(self):
         """

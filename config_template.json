@@ -9,6 +9,10 @@
       "photos-delay": 1.0
     },
     {
+      "type": "Camera",
+      "title": "mirror"
+    },
+    {
       "type": "Web",
       "title": "example",
       "web-url": "http://example.com"

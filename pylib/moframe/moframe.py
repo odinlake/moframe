@@ -20,9 +20,9 @@ class MOFrameButton(QPushButton):
             self.clicked.connect(lambda: self.parent.parent.setWidget(self.idx))
 
         # style background doesn't work on rpi
-        self.setAutoFillBackground(True)
         pal = self.palette()
         pal.setColor(QtGui.QPalette.Button, QtGui.QColor(20, 10, 10))
+        self.setAutoFillBackground(True)
         self.setPalette(pal)
         self.update()
 

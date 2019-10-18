@@ -1,0 +1,23 @@
+{
+  "menu-delay": 2000.0,
+  "menu-button-font": "30px bold sans-serif",
+  "widgets": [
+    {
+      "type": "Gallery",
+      "title": "photos",
+      "photos-basepath": "F:\\PhotoFrame",
+      "photos-delay": 1.0
+    },
+    {
+      "type": "Camera",
+      "title": "mirror",
+      "invert": "x"
+    },
+    {
+      "type": "Web",
+      "title": "charts",
+      "web-url": "http://192.168.1.15:3000/d/9z4E5IRRk/riverdale?refresh=30s&orgId=1"
+    }
+  ]
+}
+

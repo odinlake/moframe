@@ -4,7 +4,7 @@ import os.path
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt
 from moframe.moframe import MOFrameWindow
-import json
+import hjson
 
 
 def main():
@@ -14,10 +14,10 @@ def main():
     cfg = {}
 
     for path in sys.path:
-        cfgpath = os.path.join(path, "..", "config.json")
+        cfgpath = os.path.join(path, "..", "moconfig.hjson")
         if os.path.isfile(cfgpath):
             with open(cfgpath, "r") as fh:
-                cfg = json.load(fh)
+                cfg = hjson.load(fh)
 
     app = QtWidgets.QApplication(sys.argv)
     app.setOverrideCursor(Qt.BlankCursor)

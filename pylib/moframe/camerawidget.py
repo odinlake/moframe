@@ -19,6 +19,8 @@ class CameraWidget(BaseWidget):
         self.timer.timeout.connect(self.update)
         self.vc = cv2.VideoCapture(cfg.get("camera-index", 0))
         self.vc.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
+        self.vc.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        self.vc.set(cv2.CAP_PROP_FRAME_HEIGHT, 800)
 
     def update(self):
         """
@@ -56,7 +58,7 @@ class CameraWidget(BaseWidget):
         qp.begin(self)
         if self.image:
             w, h = self.width(), self.height()
-            img = self.image.scaled(w, h, aspectRatioMode=Qt.KeepAspectRatioByExpanding)
+            img = self.image # self.image.scaled(w, h, aspectRatioMode=Qt.KeepAspectRatioByExpanding)
             imw, imh = img.width(), img.height()
             ix = max(0, (imw - w) / 2)
             iy = max(0, (imh - h) / 2)

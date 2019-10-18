@@ -2,10 +2,6 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QPushButton
 from PyQt5.QtCore import QSize, Qt, QTimer, QEvent
 
-from moframe.gallerywidget import GalleryWidget
-from moframe.webwidget import WebWidget
-from moframe.camerawidget import CameraWidget
-
 
 class MOFrameButton(QPushButton):
     def __init__(self, parent, idx):
@@ -110,10 +106,13 @@ QPushButton {
 
         for widget_config in cfg.get("widgets", []):
             if widget_config["type"] == "Gallery":
+                from moframe.gallerywidget import GalleryWidget
                 ww = GalleryWidget(self, cfg=widget_config)
             elif widget_config["type"] == "Web":
+                from moframe.webwidget import WebWidget
                 ww = WebWidget(self, cfg=widget_config)
             elif widget_config["type"] == "Camera":
+                from moframe.camerawidget import CameraWidget
                 ww = CameraWidget(self, cfg=widget_config)
             self.central_widgets.append(ww)
 
@@ -126,6 +125,7 @@ QPushButton {
             layout.addWidget(ww)
 
         self.setWidget(0)
+
 
     def setWidget(self, idx):
         """

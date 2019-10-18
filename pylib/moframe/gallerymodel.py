@@ -5,24 +5,38 @@ from collections import defaultdict, deque
 import random
 import time
 
-from PyQt5.QtGui import QImage
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QImage, QMovie
+from PyQt5.QtCore import Qt, QSize
+
+
+EXT_IMAGE = ("jpg", "bmp", "png")
+EXT_ANIMATION = ("gif", "mov")
+EXT_ALL = EXT_IMAGE + EXT_ANIMATION
 
 
 class GalleryObject(object):
-    qimage = None
+    qdata = None
     qpreview = None
-    contents = "image"
+    contents = "unknown"
     path = ("", "")
     fullsize = (1280, 800)
     previewsize = (200, 200)
     error = None
     validated = False
 
-    def __init__(self, path):
+    def __init__(self, path, **kwargs):
+        root, file = path
         self.path = path
+        ext = file.rsplit(".", 1)[-1].lower()
+        if ext in EXT_IMAGE:
+            self.contents = "image"
+        elif ext in EXT_ANIMATION:
+            self.contents = "animation"
+        for k, v in kwargs.items():
+            setattr(self, k, v)
 
-    def fit(self, img, size):
+    @classmethod
+    def fit(cls, img, size):
         """
         Fit image in size by scaling proportionally to cover (touch from outside),
         centering the image, and cropping it to the exact size.
@@ -45,23 +59,44 @@ class GalleryObject(object):
         """
         Returns: QImage object containing the still image data.
         """
-        if self.qimage is None and not self.error:
+        if not self.contents == "image":
+            return None
+        if self.qdata is None and not self.error:
             root, file = self.path
             img = QImage(os.path.join(root, file))
             if img.isNull():
                 self.error = "failed to load"
                 return None
-            self.qimage = self.fit(img, self.fullsize)
-        return self.qimage
+            self.qdata = self.fit(img, self.fullsize)
+        return self.qdata
+
+    def getQMovie(self):
+        """
+        Returns: Qmovie object containing the animation.
+        """
+        if not self.contents == "animation":
+            return None
+        if self.qdata is None and not self.error:
+            root, file = self.path
+            img = QMovie(os.path.join(root, file))
+            if not img.isValid():
+                self.error = "failed to load: " + img.lastError()
+                return None
+            img.setScaledSize(QSize(*self.fullsize))
+            self.qdata = img
+        return self.qdata
 
     def getQPreview(self):
         """
         Returns: QImage object containing a sized image data.
         """
         if self.qpreview is None:
-            img = self.getQImage()
-            if img is not None:
-                self.qpreview = self.fit(img, self.previewsize)
+            if self.contents == "image":
+                img = self.getQImage()
+                if img is not None:
+                    self.qpreview = self.fit(img, self.previewsize)
+            if self.contents == "animation":
+                self.qpreview = "PLACEHOLDER-FIXME!"
         return self.qpreview
 
     def load(self):
@@ -74,7 +109,7 @@ class GalleryObject(object):
         """
         Free memory by releasing cached image.
         """
-        self.qimage = None
+        self.qdata = None
 
     def forget(self):
         """
@@ -89,12 +124,17 @@ class GalleryObject(object):
 
         Returns: True if the image can be loaded correctly.
         """
-        return self.getQImage() is not None
+        if self.contents == "image":
+            return self.getQImage() is not None
+        if self.contents == "animation":
+            return self.getQMovie() is not None
 
 
 class GalleryModel(threading.Thread):
-    def __init__(self, basepath):
+    def __init__(self, cfg):
+        basepath = cfg.get("photos-basepath", ".")
         threading.Thread.__init__(self)
+        self.cfg= cfg
         self.daemon = True
         self.basepath = basepath
         self.categories = defaultdict(set)
@@ -112,9 +152,10 @@ class GalleryModel(threading.Thread):
         """
         for (root, dirs, files) in os.walk(self.basepath):
             for file in files:
-                # jpeg files in dirs whose name do not start with underscore
+                # files with known extensions in dirs whose name do not start with underscore
                 if not os.path.split(root)[-1].startswith("_"):
-                    if file.lower().endswith(".jpg"):
+                    ext = file.rsplit(".", 1)[-1].lower()
+                    if ext in EXT_ALL:
                         self.categories[""].add((root, file))
                         self.count += 1
                         if self.count % 10 == 0:
@@ -136,6 +177,7 @@ class GalleryModel(threading.Thread):
                     root, file = random.choice(tuple(candidates))
                     img = self.loadImage(root, file)
                     if not img.valid():
+                        print("Error: bad image file:", img.contents, img.error)
                         self.categories[""].remove((root, file))
                     else:
                         self.loaded[(root, file)] = img
@@ -152,6 +194,8 @@ class GalleryModel(threading.Thread):
             QImage: image.
         """
         obj = GalleryObject((root, file))
+        if "target-size" in self.cfg:
+            obj.fullsize = self.cfg["target-size"]
         obj.load()
         return obj
 
@@ -162,8 +206,8 @@ class GalleryModel(threading.Thread):
         Returns:
             (str, str, QImage): (root, filename, image)
         """
-        self.idx = max(-1, self.idx - 1)
-        if self.idx == -1:
+        self.idx = max(0, self.idx - 1)
+        if self.idx <= 0:
             self.addImage()
         item = self.getCurrentImage()
         return item
@@ -200,9 +244,13 @@ class GalleryModel(threading.Thread):
         Returns:
             (str, str, QImage): (root, filename, image)
         """
-        if self.idx == -1:
-            item = self.cache[-1]
-        elif self.idx >= 0:
+        if len(self.history) == 0:
+            print("Error: no images to display")
+            return None, None, None
+        elif len(self.history) <= self.idx:
+            print("Error: invalid image index")
+            return None, None, None
+        else:
             key = self.history[-1 - self.idx]
             for kk, ii in self.cache:
                 if key == kk:
@@ -217,11 +265,9 @@ class GalleryModel(threading.Thread):
         Select a new image from the preloaded cache and move it to the front of
         the history.
         """
-        for _ in range(100):
-            if len(self.loaded) == 0:
-                time.sleep(0.1)
         if len(self.loaded) == 0:
-            raise RuntimeError("No image available.")
+            print("No new image available.")
+            return
         with self.lock:
             item = self.loaded.popitem()
             self.cache.append(item)
@@ -230,3 +276,6 @@ class GalleryModel(threading.Thread):
                 self.history.popleft()
             while len(self.cache) > 10:
                 self.cache.popleft()
+
+
+

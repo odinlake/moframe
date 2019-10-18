@@ -7,20 +7,25 @@ from moframe.gallerymodel import GalleryModel
 from moframe.imagewidget import ImageWidget
 
 
+import threading
+
+
 class GalleryWidget(BaseWidget):
     reverse = False
 
     def __init__(self, parent, cfg=None):
         QWidget.__init__(self, parent)
         self.config = cfg or {}
-        self.imagemodel = GalleryModel(cfg.get("photos-basepath", "."))
+        self.imagemodel = GalleryModel(cfg)
         self.imagemodel.start()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
         self.photoframe = ImageWidget(self)
+        self.movieframe = QLabel(self)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.photoframe)
+        layout.addWidget(self.movieframe)
 
     def buttonName(self):
         """
@@ -33,7 +38,7 @@ class GalleryWidget(BaseWidget):
         Update display as needed.
         """
         img = None
-        if self.imagemodel.idx == -1 and not self.reverse:
+        if self.imagemodel.idx <= 0 and not self.reverse:
             root, filename, img = self.imagemodel.nextImage()
         elif self.reverse:
             root, filename, img = self.imagemodel.prevImage()
@@ -41,8 +46,17 @@ class GalleryWidget(BaseWidget):
                 self.reverse = False
                 self.imagemodel.idx = -1
         if img:
-            self.photoframe.setImage(img)
-            self.photoframe.show()
+            if img.contents == "image":
+                self.photoframe.setImage(img)
+                self.movieframe.hide()
+                self.photoframe.show()
+            elif img.contents == "animation":
+                img.unload()
+                movie = img.getQMovie()
+                self.movieframe.setMovie(movie)
+                movie.start()
+                self.photoframe.hide()
+                self.movieframe.show()
 
     def start(self):
         """

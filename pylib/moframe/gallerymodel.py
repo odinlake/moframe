@@ -1,11 +1,95 @@
-from PyQt5.QtGui import QImage
 import threading
 import os
 import os.path
 from collections import defaultdict, deque
 import random
 import time
-import gc
+
+from PyQt5.QtGui import QImage
+from PyQt5.QtCore import Qt
+
+
+class GalleryObject(object):
+    qimage = None
+    qpreview = None
+    contents = "image"
+    path = ("", "")
+    fullsize = (1280, 800)
+    previewsize = (200, 200)
+    error = None
+    validated = False
+
+    def __init__(self, path):
+        self.path = path
+
+    def fit(self, img, size):
+        """
+        Fit image in size by scaling proportionally to cover (touch from outside),
+        centering the image, and cropping it to the exact size.
+
+        Args:
+            img: A QImage object.
+            size: Desired pixel width and height tuple.
+
+        Returns: New QImage of exact given size.
+        """
+        width, height = size
+        img = img.scaled(width, height, aspectRatioMode=Qt.KeepAspectRatioByExpanding)
+        imw, imh = img.width(), img.height()
+        ix = max(0, (imw - width) / 2)
+        iy = max(0, (imh - height) / 2)
+        img = img.copy(ix, iy, width, height)
+        return img
+
+    def getQImage(self):
+        """
+        Returns: QImage object containing the still image data.
+        """
+        if self.qimage is None and not self.error:
+            root, file = self.path
+            img = QImage(os.path.join(root, file))
+            if img.isNull():
+                self.error = "failed to load"
+                return None
+            self.qimage = self.fit(img, self.fullsize)
+        return self.qimage
+
+    def getQPreview(self):
+        """
+        Returns: QImage object containing a sized image data.
+        """
+        if self.qpreview is None:
+            img = self.getQImage()
+            if img is not None:
+                self.qpreview = self.fit(img, self.previewsize)
+        return self.qpreview
+
+    def load(self):
+        """
+        (Pre)load the image object into memory.
+        """
+        self.getQPreview()
+
+    def unload(self):
+        """
+        Free memory by releasing cached image.
+        """
+        self.qimage = None
+
+    def forget(self):
+        """
+        Free memory by releasing all image data, including preview.
+        """
+        self.unload()
+        self.qpreview = None
+
+    def valid(self):
+        """
+        Try to load object and return True iff successful.
+
+        Returns: True if the image can be loaded correctly.
+        """
+        return self.getQImage() is not None
 
 
 class GalleryModel(threading.Thread):
@@ -51,7 +135,7 @@ class GalleryModel(threading.Thread):
                 if candidates:
                     root, file = random.choice(tuple(candidates))
                     img = self.loadImage(root, file)
-                    if img.isNull():
+                    if not img.valid():
                         self.categories[""].remove((root, file))
                     else:
                         self.loaded[(root, file)] = img
@@ -67,8 +151,9 @@ class GalleryModel(threading.Thread):
         Returns:
             QImage: image.
         """
-        img = QImage(os.path.join(root, file))
-        return img
+        obj = GalleryObject((root, file))
+        obj.load()
+        return obj
 
     def nextImage(self):
         """

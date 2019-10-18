@@ -23,11 +23,12 @@ class ImageWidget(QWidget):
         Args:
             event: Qt event.
         """
+        img = self.image.getQImage() if self.image else None
         qp = QPainter()
         qp.begin(self)
-        if self.image:
+        if img:
             w, h = self.width(), self.height()
-            img = self.image.scaled(w, h, aspectRatioMode=Qt.KeepAspectRatioByExpanding)
+            #img = img.scaled(w, h, aspectRatioMode=Qt.KeepAspectRatioByExpanding)
             imw, imh = img.width(), img.height()
             ix = max(0, (imw - w) / 2)
             iy = max(0, (imh - h) / 2)

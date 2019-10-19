@@ -7,6 +7,7 @@
       "title": "main",
       "photos-basepath": "/home/username/photos",
       "photos-delay": 1.0
+      "target-size": [1280, 800],
     },
     {
       "type": "Camera",

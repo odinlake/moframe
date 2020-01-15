@@ -28,6 +28,26 @@ class MOFrameButton(QPushButton):
     def maximumSizeHint(self):
         return QSize(300, 250)
 
+    def paintEvent(self, event):
+        """
+        Custom paint because buttons don't style correctly on RPi.
+
+        Args:
+            event: Qt event.
+        """
+        qp = QtGui.QPainter()
+        qp.begin(self)
+        w, h = self.width(), self.height()
+        brush1 = QtGui.QBrush(QtGui.QColor(0x00, 0x00, 0x00, 0xaa), Qt.SolidPattern)
+        brush2 = QtGui.QBrush(QtGui.QColor(0xaa, 0x00, 0x00, 0xff), Qt.Dense7Pattern)
+        qp.fillRect(0, 0, w, h, brush1)
+        qp.fillRect(0, 0, w, h, brush2)
+        qp.drawText(0, 0, w, h, Qt.AlignCenter | Qt.AlignVCenter, self.text())
+        qp.setPen(QtGui.QColor(0xff, 0xff, 0xff, 0x88))
+        qp.drawRect(0, 0, w-1, h-1)
+        qp.end()
+
+
 
 class MOFrameMenu(QWidget):
     def __init__(self, parent):
@@ -75,8 +95,8 @@ class MOFrameMenu(QWidget):
         qp = QtGui.QPainter()
         qp.begin(self)
         w, h = self.width(), self.height()
-        brush1 = QtGui.QBrush(QtGui.QColor(0x44, 0x44, 0x44, 0x88), Qt.SolidPattern)
-        brush2 = QtGui.QBrush(QtGui.QColor(0xaa, 0x00, 0x00, 0xff), Qt.Dense6Pattern)
+        brush1 = QtGui.QBrush(QtGui.QColor(0xaa, 0xaa, 0xaa, 0x88), Qt.SolidPattern)
+        brush2 = QtGui.QBrush(QtGui.QColor(0xaa, 0x00, 0x00, 0xff), Qt.Dense7Pattern)
         qp.fillRect(0, 0, w, h, brush1)
         qp.fillRect(0, 0, w, h, brush2)
         qp.end()

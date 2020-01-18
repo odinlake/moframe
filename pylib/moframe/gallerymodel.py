@@ -144,6 +144,7 @@ class GalleryModel(threading.Thread):
         self.history = deque()
         self.cache = deque()
         self.active = True
+        self.paused = False
         self.idx = -1
 
     def run(self):
@@ -152,6 +153,10 @@ class GalleryModel(threading.Thread):
         """
         for (root, dirs, files) in os.walk(self.basepath):
             for file in files:
+                while self.paused and self.active:
+                    time.sleep(1.0)
+                if not self.active:
+                    return
                 # files with known extensions in dirs whose name do not start with underscore
                 if not os.path.split(root)[-1].startswith("_"):
                     ext = file.rsplit(".", 1)[-1].lower()
@@ -160,9 +165,9 @@ class GalleryModel(threading.Thread):
                         self.count += 1
                         if self.count % 10 == 0:
                             self.preloadStep()
-                        if not self.active:
-                            return
         while self.active:
+            while self.paused and self.active:
+                time.sleep(1.0)
             self.preloadStep()
             time.sleep(0.1)
 

@@ -7,10 +7,27 @@ from moframe.moframe import MOFrameWindow
 import hjson
 
 
+MAINWIN = None
+
+
+try:
+    import skywriter
+except ImportError:
+    skywriter = None
+
+if skywriter:
+    @skywriter.move()
+    def skywriterMove(x, y, z):
+        if MAINWIN:
+            MAINWIN.skywriterMove(x, y, z)
+
+
+
 def main():
     """
     An entrypoint.
     """
+    global MAINWIN
     cfg = {}
 
     for path in sys.path:
@@ -24,6 +41,7 @@ def main():
     #app.changeOverrideCursor(Qt.BlankCursor)
     mainWin = MOFrameWindow(cfg=cfg)
     mainWin.showMaximized()
+    MAINWIN = mainWin
     app.installEventFilter(mainWin)
     sys.exit( app.exec_() )
 

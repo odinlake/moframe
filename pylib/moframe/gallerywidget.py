@@ -7,9 +7,6 @@ from moframe.gallerymodel import GalleryModel
 from moframe.imagewidget import ImageWidget
 
 
-import threading
-
-
 class GalleryWidget(BaseWidget):
     reverse = False
 
@@ -37,6 +34,7 @@ class GalleryWidget(BaseWidget):
         """
         Update display as needed.
         """
+        print(self, "update")
         img = None
         if self.imagemodel.idx <= 0 and not self.reverse:
             root, filename, img = self.imagemodel.nextImage()
@@ -62,12 +60,14 @@ class GalleryWidget(BaseWidget):
         """
         Start or resume widget.
         """
+        self.imagemodel.paused = False
         self.timer.start(self.config.get("photos-delay", 1.0) * 1000)
 
     def pause(self):
         """
         Temporarily stop the widget from updating.
         """
+        self.imagemodel.paused = True
         self.timer.stop()
 
     def stop(self):

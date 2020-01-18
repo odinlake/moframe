@@ -123,29 +123,32 @@ QPushButton {
 }
         """ % (cfg["menu-button-font"]))
         self.central_widgets = []
+        self.setCentralWidget(QWidget(self))
+        centralw = self.centralWidget()
 
         for widget_config in cfg.get("widgets", []):
             if widget_config["type"] == "Gallery":
                 from moframe.gallerywidget import GalleryWidget
-                ww = GalleryWidget(self, cfg=widget_config)
+                ww = GalleryWidget(centralw, cfg=widget_config)
             elif widget_config["type"] == "Web":
                 from moframe.webwidget import WebWidget
-                ww = WebWidget(self, cfg=widget_config)
+                ww = WebWidget(centralw, cfg=widget_config)
             elif widget_config["type"] == "Camera":
                 from moframe.camerawidget import CameraWidget
-                ww = CameraWidget(self, cfg=widget_config)
+                ww = CameraWidget(centralw, cfg=widget_config)
             self.central_widgets.append(ww)
 
-        self.setCentralWidget(QWidget(self))
-        self.menu = MOFrameMenu(self)
-
-        layout = QHBoxLayout(self.centralWidget())
+        layout = QHBoxLayout(centralw)
         layout.setContentsMargins(0, 0, 0, 0)
         for ww in self.central_widgets:
             layout.addWidget(ww)
 
+        self.menu = MOFrameMenu(self)
+        self.marker = QPushButton("X", self)
+        self.marker.hide()
         self.setWidget(0)
-
+        self.hideMarkerTimer = QTimer(self)
+        self.hideMarkerTimer.timeout.connect(self.marker.hide)
 
     def setWidget(self, idx):
         """
@@ -195,6 +198,10 @@ QPushButton {
             return True
         elif event.type() in (QEvent.MouseMove, QEvent.MouseButtonPress):
             self.showMenu()
+            pt = event.pos()
+            if pt.x() and pt.y():
+                self.skywriterMove(pt.x(), pt.y(), 30)
+
         res = super().eventFilter(source, event)
         return res
 
@@ -242,3 +249,17 @@ QPushButton {
         self.showFullScreen()
         print("window size:", self.width(), self.height())
 
+    def skywriterMove(self, x, y, z):
+        """
+
+        Args:
+            x:
+            y:
+            z:
+
+        Returns:
+
+        """
+        self.marker.setGeometry(x, y, 30 + z, 30)
+        self.marker.show()
+        self.hideMarkerTimer.start(2.0)

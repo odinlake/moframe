@@ -1,6 +1,8 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QPushButton
 from PyQt5.QtCore import QSize, Qt, QTimer, QEvent
+from collections import deque
+import time
 
 
 class MOFrameButton(QPushButton):
@@ -147,7 +149,23 @@ QPushButton {
         self.marker = QPushButton("X", self)
         self.marker.hide()
         self.setWidget(0)
-
+        self.utilTimer = QTimer(self)
+        self.utilTimer.timeout.connect(self.utilLoop)
+        self.utilTimer.start(0.5)
+        self.skywriterQueue = deque()
+        self.skywriterTimeout = 0
+        
+    def utilLoop(self):
+        t = self.skywriterTimeout
+        if t and time.time() - t > 3.0:
+            self.marker.hide()
+            self.skywriterTimeout = 0
+        while self.skywriterQueue:
+            args = self.skywriterQueue.popleft()
+            if args[0] == "move":
+                self.skywriterMove(*args[1:])
+            self.skywriterTimeout = time.time()
+        
     def setWidget(self, idx):
         """
         Choose which widget in the list of central widgets, to display.
@@ -199,7 +217,6 @@ QPushButton {
             pt = event.pos()
             if pt.x() and pt.y():
                 self.skywriterMove(pt.x(), pt.y(), 30)
-
         res = super().eventFilter(source, event)
         return res
 
@@ -245,21 +262,17 @@ QPushButton {
             event: Qt event.
         """
         self.showFullScreen()
-        print("window size:", self.width(), self.height())
 
     def skywriterMove(self, x, y, z):
         """
+        Skywriter API forwarded and handled on qt event loop (do not call on skywriter thread).
 
         Args:
-            x:
-            y:
-            z:
-
-        Returns:
-
+            x: [0, 1] x coordinate on skyhat
+            y: [0, 1] y coordinate on skyhat
+            z: [0, 1], higher when hand is close or covers more of skyhat
         """
-        self.marker.setGeometry(x, y, 30 + z, 30)
+        ww, hh = self.width(), self.height()
+        s = 70 * (1.0 - z)
+        self.marker.setGeometry(ww * x, hh * (1.0 - y), 30 + s, 30 + s)
         self.marker.show()
-        self.hideMarkerTimer = QTimer(self)
-        self.hideMarkerTimer.timeout.connect(self.marker.hide)
-        self.hideMarkerTimer.start(2.0)

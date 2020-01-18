@@ -34,7 +34,6 @@ class GalleryWidget(BaseWidget):
         """
         Update display as needed.
         """
-        print(self, "update")
         img = None
         if self.imagemodel.idx <= 0 and not self.reverse:
             root, filename, img = self.imagemodel.nextImage()

@@ -19,7 +19,7 @@ if skywriter:
     @skywriter.move()
     def skywriterMove(x, y, z):
         if MAINWIN:
-            MAINWIN.skywriterMove(x, y, z)
+            MAINWIN.skywriterQueue.append(("move", x, y, z))
 
 
 

@@ -147,8 +147,6 @@ QPushButton {
         self.marker = QPushButton("X", self)
         self.marker.hide()
         self.setWidget(0)
-        self.hideMarkerTimer = QTimer(self)
-        self.hideMarkerTimer.timeout.connect(self.marker.hide)
 
     def setWidget(self, idx):
         """
@@ -262,4 +260,6 @@ QPushButton {
         """
         self.marker.setGeometry(x, y, 30 + z, 30)
         self.marker.show()
+        self.hideMarkerTimer = QTimer(self)
+        self.hideMarkerTimer.timeout.connect(self.marker.hide)
         self.hideMarkerTimer.start(2.0)

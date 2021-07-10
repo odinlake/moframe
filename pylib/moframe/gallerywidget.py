@@ -29,7 +29,7 @@ class GalleryWidget(BaseWidget):
         """
         Returns: String representing a name suitable for a button.
         """
-        return "Gallery\n" + self.config.get("title", "...")
+        return self.config.get("title", "...")
 
     def update(self):
         """

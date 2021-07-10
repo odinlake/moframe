@@ -9,7 +9,8 @@ import hjson
 
 MAINWIN = None
 
-
+# skywriter is too noisy and unreliable
+"""
 try:
     import skywriter
 except ImportError:
@@ -20,7 +21,7 @@ if skywriter:
     def skywriterMove(x, y, z):
         if MAINWIN:
             MAINWIN.skywriterQueue.append(("move", x, y, z))
-
+"""
 
 
 def main():
@@ -39,11 +40,11 @@ def main():
     app = QtWidgets.QApplication(sys.argv)
     app.setOverrideCursor(Qt.BlankCursor)
     #app.changeOverrideCursor(Qt.BlankCursor)
-    mainWin = MOFrameWindow(cfg=cfg)
-    mainWin.showMaximized()
-    MAINWIN = mainWin
-    app.installEventFilter(mainWin)
-    sys.exit( app.exec_() )
+    mainwin = MOFrameWindow(cfg=cfg)
+    mainwin.showMaximized()
+    MAINWIN = mainwin
+    app.installEventFilter(mainwin)
+    sys.exit(app.exec_())
 
 
 

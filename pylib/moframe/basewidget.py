@@ -40,3 +40,32 @@ class BaseWidget(QWidget):
         """
         pass
 
+    def next(self):
+        """
+        Handle "next" command if applicable.
+        """
+        pass
+
+    def previous(self):
+        """
+        Handle "previous" command if applicable.
+        """
+        pass
+
+    def faster(self):
+        """
+        Handle "faster" command if applicable.
+        """
+        pass
+
+    def slower(self):
+        """
+        Handle "slower" command if applicable.
+        """
+        pass
+
+    def getStatus(self):
+        """
+        Return status information as a dictionary.
+        """
+        return {}

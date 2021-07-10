@@ -23,6 +23,7 @@ class GalleryWidget(BaseWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.photoframe)
         layout.addWidget(self.movieframe)
+        self.delayMultiplier = 1000.0
 
     def buttonName(self):
         """
@@ -35,13 +36,13 @@ class GalleryWidget(BaseWidget):
         Update display as needed.
         """
         img = None
-        if self.imagemodel.idx <= 0 and not self.reverse:
-            root, filename, img = self.imagemodel.nextImage()
-        elif self.reverse:
+        if self.reverse:
             root, filename, img = self.imagemodel.prevImage()
             if not self.imagemodel.hasPrevImage():
                 self.reverse = False
                 self.imagemodel.idx = -1
+        else:
+            root, filename, img = self.imagemodel.nextImage()
         if img:
             if img.contents == "image":
                 self.photoframe.setImage(img)
@@ -55,12 +56,15 @@ class GalleryWidget(BaseWidget):
                 self.photoframe.hide()
                 self.movieframe.show()
 
+    def getDelay(self):
+        return self.config.get("photos-delay", 1.0) * self.delayMultiplier
+
     def start(self):
         """
         Start or resume widget.
         """
         self.imagemodel.paused = False
-        self.timer.start(self.config.get("photos-delay", 1.0) * 1000)
+        self.timer.start(self.getDelay())
 
     def pause(self):
         """
@@ -77,6 +81,36 @@ class GalleryWidget(BaseWidget):
         self.imagemodel.active = False
         self.imagemodel.join()
 
+    def next(self):
+        """
+        Handle "next" command if applicable.
+        """
+        root, filename, img = self.imagemodel.nextImage()
+        self.photoframe.setImage(img)
+
+    def previous(self):
+        """
+        Handle "previous" command if applicable.
+        """
+        root, filename, img = self.imagemodel.prevImage()
+        self.photoframe.setImage(img)
+
+    def faster(self):
+        """
+        Handle "faster" command if applicable.
+        """
+        if self.delayMultiplier > 1:
+            self.delayMultiplier /= 5.0
+        self.start()
+
+    def slower(self):
+        """
+        Handle "slower" command if applicable.
+        """
+        if self.delayMultiplier < 10e6:
+            self.delayMultiplier *= 5.0
+        self.start()
+
     def keyPressEvent(self, event):
         """
         Handle keyboard commands.
@@ -86,13 +120,39 @@ class GalleryWidget(BaseWidget):
         """
         self.photoframe.show()
         if event.key() == QtCore.Qt.Key_Left:
-            root, filename, img = self.imagemodel.prevImage()
-            self.photoframe.setImage(img)
+            self.previous()
         elif event.key() == QtCore.Qt.Key_Right:
-            root, filename, img = self.imagemodel.nextImage()
-            self.photoframe.setImage(img)
+            self.next()
         elif event.key() in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
             self.imagemodel.idx = -1
         elif event.key() == QtCore.Qt.Key_Backspace:
             self.reverse = not self.reverse
+
+    def getStatus(self):
+        """
+        Return status information as a dictionary.
+        """
+        return {
+            "speed": "%s" % (60000.0 / self.getDelay()),
+            "speed-unit": "photos per minute",
+            "current-image-idx": "{} of {}".format(
+                self.imagemodel.getCurrentImageIndexForward(),
+                len(self.imagemodel.history),
+            ),
+            "current-image-name": self.imagemodel.getCurrentImageKey()[1],
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

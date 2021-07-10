@@ -5,18 +5,11 @@ from collections import deque
 import time
 
 
-class MOFrameButton(QPushButton):
-    def __init__(self, parent, idx):
+class MOFrameButtonBase(QPushButton):
+    def __init__(self, parent, command=None):
         super().__init__(parent)
-        self.parent = parent
-        self.idx = idx
-        if idx == -1:
-            self.setText("close\nmenu")
-            self.clicked.connect(lambda: self.parent.parent.hideMenu())
-        else:
-            self.setText(parent.widgets()[idx].buttonName())
-            self.clicked.connect(lambda: self.parent.parent.setWidget(self.idx))
-
+        if command:
+            self.clicked.connect(command)
         # style background doesn't work on rpi
         pal = self.palette()
         pal.setColor(QtGui.QPalette.Button, QtGui.QColor(20, 10, 10))
@@ -50,22 +43,26 @@ class MOFrameButton(QPushButton):
         qp.end()
 
 
-
-class MOFrameMenu(QWidget):
-    def __init__(self, parent):
+class MOFrameButton(MOFrameButtonBase):
+    def __init__(self, parent, idx):
         super().__init__(parent)
         self.parent = parent
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
-        for idx, ww in enumerate(parent.central_widgets):
-            button = MOFrameButton(self, idx)
-            layout.addWidget(button)
-        layout.addItem(QtWidgets.QSpacerItem(
-            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
-        button = MOFrameButton(self, -1)
-        layout.addWidget(button)
+        self.idx = idx
+        self.setText(parent.widgets()[idx].buttonName())
+        self.clicked.connect(lambda: self.parent.parent.setWidget(self.idx))
 
+
+class MOFrameControlButton(MOFrameButtonBase):
+    def __init__(self, parent, text, command):
+        super().__init__(parent)
+        self.parent = parent
+        self.setText(text)
+        self.clicked.connect(lambda: command(parent.parent))
+
+
+class MOFrameMenuBase(QWidget):
+    def __init__(self, parent):
+        super().__init__(parent)
         self.setAutoFillBackground(True)
         palette = QtGui.QPalette()
         palette.setColor(QtGui.QPalette.Background, Qt.red)
@@ -75,21 +72,9 @@ class MOFrameMenu(QWidget):
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.timeout)
 
-    def widgets(self):
-        """
-        Returns: List of widgets to make buttons for.
-        """
-        return self.parent.central_widgets
-
-    def timeout(self):
-        """
-        USed to hide the menu after some seconds of inactivity.
-        """
-        self.parent.hideMenu()
-
     def paintEvent(self, event):
         """
-        Image is rescaled to cover frame as snugly as possible, then drawn centered.
+        Draw custom menu background as styling doesn't work on the RPi.
 
         Args:
             event: Qt event.
@@ -102,6 +87,117 @@ class MOFrameMenu(QWidget):
         qp.fillRect(0, 0, w, h, brush1)
         qp.fillRect(0, 0, w, h, brush2)
         qp.end()
+
+    def timeout(self):
+        """
+        USed to hide the menu after some seconds of inactivity.
+        """
+        self.parent.hideMenu()
+
+
+class MOFrameMenu(MOFrameMenuBase):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
+        for idx, ww in enumerate(parent.central_widgets):
+            button = MOFrameButton(self, idx)
+            layout.addWidget(button)
+        layout.addItem(QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+
+    def widgets(self):
+        """
+        Returns: List of widgets to make buttons for.
+        """
+        return self.parent.central_widgets
+
+
+class MOFrameControls(MOFrameMenuBase):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
+        layout.addWidget(MOFrameControlButton(self, "pause", self.pause))
+        layout.addWidget(MOFrameControlButton(self, "resume", self.resume))
+        layout.addWidget(MOFrameControlButton(self, "next", self.next))
+        layout.addWidget(MOFrameControlButton(self, "previous", self.previous))
+        layout.addWidget(MOFrameControlButton(self, "faster", self.faster))
+        layout.addWidget(MOFrameControlButton(self, "slower", self.slower))
+        layout.addItem(QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+
+    def widgets(self):
+        """
+        Returns: List of widgets to make buttons for.
+        """
+        return self.parent.central_widgets
+
+    def speedText(self):
+        s = self.parent.currentWidget().getStatus()
+        return "{} {}".format(s.get("speed", ""), s.get("speed-unit", "")) if "speed" in s else ""
+
+    def imageText(self):
+        s = self.parent.currentWidget().getStatus()
+        return "({}): {}".format(
+            s.get("current-image-idx", ""), s.get("current-image-name", "")
+        )
+
+    def pause(self, frame):
+        frame.currentWidget().pause()
+        frame.flashStatus("paused")
+
+    def resume(self, frame):
+        frame.currentWidget().start()
+        frame.flashStatus("resumed: " + self.speedText())
+
+    def next(self, frame):
+        self.pause()
+        frame.currentWidget().next()
+        frame.flashStatus(self.imageText())
+
+    def previous(self, frame):
+        self.pause()
+        frame.currentWidget().previous()
+        frame.flashStatus(self.imageText())
+
+    def faster(self, frame):
+        self.resume()
+        frame.currentWidget().faster()
+        frame.flashStatus("faster: " + self.speedText())
+
+    def slower(self, frame):
+        self.resume()
+        frame.currentWidget().slower()
+        frame.flashStatus("slower: " + self.speedText())
+
+
+class MOStatusLabel(QLabel):
+    def __init__(self, parent, text=""):
+        super().__init__(parent)
+        self.parent = parent
+        self.setText(text)
+        self.setAlignment(Qt.AlignCenter)
+        self.setWordWrap(True)
+        self.setAutoFillBackground(False)
+        self.setFont(QtGui.QFont('Arial', 30))
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.timeout)
+
+    def timeout(self):
+        """
+        Used to hide the menu after some seconds of inactivity.
+        """
+        self.hide()
+
+    def show(self, timeout=1000):
+        super().show()
+        self.timer.start(timeout)
 
 
 class MOFrameWindow(QMainWindow):
@@ -123,6 +219,10 @@ QPushButton {
     font: %s;
     color: #ffeeee;
 }
+QLabel {
+    font: "300px bold sans-serif";
+    color: #ffeeee;
+}
         """ % (cfg["menu-button-font"]))
         self.central_widgets = []
         self.setCentralWidget(QWidget(self))
@@ -138,7 +238,10 @@ QPushButton {
             elif widget_config["type"] == "Camera":
                 from moframe.camerawidget import CameraWidget
                 ww = CameraWidget(centralw, cfg=widget_config)
-            self.central_widgets.append(ww)
+            else:
+                ww = None
+            if ww:
+                self.central_widgets.append(ww)
 
         layout = QHBoxLayout(centralw)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -146,15 +249,30 @@ QPushButton {
             layout.addWidget(ww)
 
         self.menu = MOFrameMenu(self)
+        self.controls = MOFrameControls(self)
+        self.closebutton = MOFrameControlButton(self, "close menu", lambda _: self.hideMenu())
+        self.closebutton.hide()
         self.marker = QPushButton("X", self)
         self.marker.hide()
+        self.statusLabel = MOStatusLabel(self, "this is the status text")
+        self.statusLabel.hide()
         self.setWidget(0)
         self.utilTimer = QTimer(self)
         self.utilTimer.timeout.connect(self.utilLoop)
         self.utilTimer.start(0.5)
         self.skywriterQueue = deque()
         self.skywriterTimeout = 0
-        
+        self.pointer = (0, 0)
+        self.widgetindex = 0
+        self.setMouseTracking(True)
+
+    def flashStatus(self, text, timeout=1000):
+        """
+        Display status text briefly.
+        """
+        self.statusLabel.setText(text)
+        self.statusLabel.show(timeout)
+
     def utilLoop(self):
         t = self.skywriterTimeout
         if t and time.time() - t > 3.0:
@@ -165,7 +283,7 @@ QPushButton {
             if args[0] == "move":
                 self.skywriterMove(*args[1:])
             self.skywriterTimeout = time.time()
-        
+
     def setWidget(self, idx):
         """
         Choose which widget in the list of central widgets, to display.
@@ -180,14 +298,28 @@ QPushButton {
         self.central_widgets[idx].start()
         self.hideMenu()
 
+    def currentWidget(self):
+        """
+        Get currently active widget among central widgets.
+        """
+        return self.central_widgets[self.widgetindex]
+
     def showMenu(self):
         """
         Display the menu and start its timeout.
         """
         app = QtWidgets.QApplication.instance()
-        self.menu.show()
-        self.menu.timer.start(self.config.get("menu-delay", 5000.0))
         app.setOverrideCursor(Qt.ArrowCursor)
+        if self.pointer[0] > self.width() * 0.75:
+            self.menu.show()
+            self.menu.timer.start(self.config.get("menu-delay", 5000.0))
+            self.closebutton.show()
+        elif self.pointer[0] < self.width() * 0.25:
+            self.controls.show()
+            self.controls.timer.start(self.config.get("menu-delay", 5000.0))
+            self.closebutton.show()
+        else:
+            self.hideMenu()
 
     def hideMenu(self):
         """
@@ -195,6 +327,8 @@ QPushButton {
         """
         app = QtWidgets.QApplication.instance()
         self.menu.hide()
+        self.controls.hide()
+        self.closebutton.hide()
         app.setOverrideCursor(Qt.BlankCursor)
 
     def eventFilter(self, source, event):
@@ -213,8 +347,9 @@ QPushButton {
             self.keyPressEvent(event)
             return True
         elif event.type() in (QEvent.MouseMove, QEvent.MouseButtonPress):
+            pt = self.mapFromGlobal(event.globalPos())
+            self.pointer = (pt.x(), pt.y())
             self.showMenu()
-            pt = event.pos()
             if pt.x() and pt.y():
                 self.skywriterMove(pt.x(), pt.y(), 30)
         res = super().eventFilter(source, event)
@@ -230,6 +365,9 @@ QPushButton {
         super().resizeEvent(event)
         ww, hh = self.width(), self.height()
         self.menu.setGeometry(ww - 300, 0, 300, hh)
+        self.controls.setGeometry(0, 0, 300, hh)
+        self.closebutton.setGeometry(ww / 2 - 150, 50, 300, 100)
+        self.statusLabel.setGeometry(ww * 0.25, hh * 0.8, ww * 0.5, hh * 0.15)
 
     def keyPressEvent(self, event):
         """

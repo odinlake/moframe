@@ -211,9 +211,9 @@ class GalleryModel(threading.Thread):
         Returns:
             (str, str, QImage): (root, filename, image)
         """
-        self.idx = max(0, self.idx - 1)
         if self.idx <= 0:
             self.addImage()
+        self.idx = max(0, self.idx - 1)
         item = self.getCurrentImage()
         return item
 
@@ -256,7 +256,7 @@ class GalleryModel(threading.Thread):
             print("Error: invalid image index")
             return None, None, None
         else:
-            key = self.history[-1 - self.idx]
+            key = self.getCurrentImageKey()
             for kk, ii in self.cache:
                 if key == kk:
                     item = (kk, ii)
@@ -264,6 +264,23 @@ class GalleryModel(threading.Thread):
             else:
                 item = (key, self.loadImage(*key))
         return item[0] + (item[1],)
+
+    def getCurrentImageKey(self):
+        if len(self.history) > max(0, self.idx):
+            return self.history[self.getCurrentImageIndex()]
+        return ("", "")
+
+    def getCurrentImageIndex(self):
+        """
+        Index in dequeue where the most recent is always zero.
+        """
+        return -1 - self.idx
+
+    def getCurrentImageIndexForward(self):
+        """
+        Human readable index where zero is the first (retained) photo to have been shown.
+        """
+        return len(self.history) - self.idx
 
     def addImage(self):
         """

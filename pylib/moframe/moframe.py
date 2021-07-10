@@ -68,9 +68,6 @@ class MOFrameMenuBase(QWidget):
         palette.setColor(QtGui.QPalette.Background, Qt.red)
         self.setPalette(palette)
         self.setGeometry(100, 100, 300, 500)
-        self.timer = QTimer(self)
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.timeout)
 
     def paintEvent(self, event):
         """
@@ -87,12 +84,6 @@ class MOFrameMenuBase(QWidget):
         qp.fillRect(0, 0, w, h, brush1)
         qp.fillRect(0, 0, w, h, brush2)
         qp.end()
-
-    def timeout(self):
-        """
-        USed to hide the menu after some seconds of inactivity.
-        """
-        self.parent.hideMenu()
 
 
 class MOFrameMenu(MOFrameMenuBase):
@@ -156,22 +147,22 @@ class MOFrameControls(MOFrameMenuBase):
         frame.flashStatus("resumed: " + self.speedText())
 
     def next(self, frame):
-        self.pause()
+        self.pause(frame)
         frame.currentWidget().next()
         frame.flashStatus(self.imageText())
 
     def previous(self, frame):
-        self.pause()
+        self.pause(frame)
         frame.currentWidget().previous()
         frame.flashStatus(self.imageText())
 
     def faster(self, frame):
-        self.resume()
+        self.resume(frame)
         frame.currentWidget().faster()
         frame.flashStatus("faster: " + self.speedText())
 
     def slower(self, frame):
-        self.resume()
+        self.resume(frame)
         frame.currentWidget().slower()
         frame.flashStatus("slower: " + self.speedText())
 
@@ -265,6 +256,9 @@ QLabel {
         self.pointer = (0, 0)
         self.widgetindex = 0
         self.setMouseTracking(True)
+        self.menutimer = QTimer(self)
+        self.menutimer.setSingleShot(True)
+        self.menutimer.timeout.connect(self.hideMenu)
 
     def flashStatus(self, text, timeout=1000):
         """
@@ -310,16 +304,16 @@ QLabel {
         """
         app = QtWidgets.QApplication.instance()
         app.setOverrideCursor(Qt.ArrowCursor)
+        hidedelay = self.config.get("menu-delay", 5000.0)
         if self.pointer[0] > self.width() * 0.75:
             self.menu.show()
-            self.menu.timer.start(self.config.get("menu-delay", 5000.0))
             self.closebutton.show()
         elif self.pointer[0] < self.width() * 0.25:
             self.controls.show()
-            self.controls.timer.start(self.config.get("menu-delay", 5000.0))
             self.closebutton.show()
         else:
-            self.hideMenu()
+            hidedelay = 0
+        self.menutimer.start(hidedelay)
 
     def hideMenu(self):
         """

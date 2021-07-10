@@ -241,7 +241,7 @@ QLabel {
 
         self.menu = MOFrameMenu(self)
         self.controls = MOFrameControls(self)
-        self.closebutton = MOFrameControlButton(self, "close menu", lambda _: self.hideMenu())
+        self.closebutton = MOFrameControlButton(self, "close menu", lambda _: self.menutimer.start(0))
         self.closebutton.hide()
         self.marker = QPushButton("X", self)
         self.marker.hide()
@@ -259,6 +259,7 @@ QLabel {
         self.menutimer = QTimer(self)
         self.menutimer.setSingleShot(True)
         self.menutimer.timeout.connect(self.hideMenu)
+        self.hideMenu()
 
     def flashStatus(self, text, timeout=1000):
         """
@@ -290,7 +291,6 @@ QLabel {
         self.widgetindex = idx
         self.central_widgets[idx].show()
         self.central_widgets[idx].start()
-        self.hideMenu()
 
     def currentWidget(self):
         """
@@ -305,14 +305,9 @@ QLabel {
         app = QtWidgets.QApplication.instance()
         app.setOverrideCursor(Qt.ArrowCursor)
         hidedelay = self.config.get("menu-delay", 5000.0)
-        if self.pointer[0] > self.width() * 0.75:
-            self.menu.show()
-            self.closebutton.show()
-        elif self.pointer[0] < self.width() * 0.25:
-            self.controls.show()
-            self.closebutton.show()
-        else:
-            hidedelay = 0
+        self.menu.show()
+        self.closebutton.show()
+        self.controls.show()
         self.menutimer.start(hidedelay)
 
     def hideMenu(self):
@@ -320,10 +315,21 @@ QLabel {
         Hide the menu.
         """
         app = QtWidgets.QApplication.instance()
+        self.menutimer.stop()
         self.menu.hide()
         self.controls.hide()
         self.closebutton.hide()
         app.setOverrideCursor(Qt.BlankCursor)
+
+    def doLater(self, cb, delay=0):
+        """
+        Do callback cb after delay millisecs. If delay is 0, just do at the end of the
+        current event queue.
+        """
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+        timer.timeout.connect(cb)
+        timer.start(delay)
 
     def eventFilter(self, source, event):
         """
@@ -337,16 +343,19 @@ QLabel {
         Returns: True iff we intercept the event globally, i.e.,
         it is a keyboard event.
         """
+        res = super().eventFilter(source, event)
         if event.type() == QEvent.KeyPress:
             self.keyPressEvent(event)
             return True
-        elif event.type() in (QEvent.MouseMove, QEvent.MouseButtonPress):
+        elif event.type() in (QEvent.MouseButtonPress,):
             pt = self.mapFromGlobal(event.globalPos())
             self.pointer = (pt.x(), pt.y())
-            self.showMenu()
+            self.doLater(self.showMenu)
+        elif event.type() in (QEvent.MouseMove,):
+            pt = self.mapFromGlobal(event.globalPos())
+            self.pointer = (pt.x(), pt.y())
             if pt.x() and pt.y():
                 self.skywriterMove(pt.x(), pt.y(), 30)
-        res = super().eventFilter(source, event)
         return res
 
     def resizeEvent(self, event):

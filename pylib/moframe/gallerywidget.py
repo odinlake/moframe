@@ -55,6 +55,7 @@ class GalleryWidget(BaseWidget):
                 movie.start()
                 self.photoframe.hide()
                 self.movieframe.show()
+            self.timer.setInterval(self.getDelay())
 
     def getDelay(self):
         return self.config.get("photos-delay", 1.0) * self.delayMultiplier
@@ -64,7 +65,7 @@ class GalleryWidget(BaseWidget):
         Start or resume widget.
         """
         self.imagemodel.paused = False
-        self.timer.start(self.getDelay())
+        self.timer.start(100)
 
     def pause(self):
         """

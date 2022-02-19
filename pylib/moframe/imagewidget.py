@@ -1,10 +1,10 @@
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPainter, QColor, QFont
-
+from PyQt5.QtGui import QPainter, QColor, QFont, QBrush
 
 class ImageWidget(QWidget):
     image = None
+    darkenBy = 0x00
 
     def setImage(self, img):
         """
@@ -33,6 +33,8 @@ class ImageWidget(QWidget):
             ix = max(0, (imw - w) / 2)
             iy = max(0, (imh - h) / 2)
             qp.drawImage(0, 0, img, ix, iy)
+            brush1 = QBrush(QColor(0x00, 0x00, 0x00, self.darkenBy), Qt.SolidPattern)
+            qp.fillRect(0, 0, w, h, brush1)
         else:
             qp.setPen(QColor(168, 34, 3))
             qp.setFont(QFont('Decorative', 10))

@@ -18,7 +18,7 @@ class MOFrameButtonBase(QPushButton):
         self.update()
 
     def minimumSizeHint(self):
-        return QSize(0, 100)
+        return QSize(50, 100)
 
     def maximumSizeHint(self):
         return QSize(300, 250)
@@ -90,22 +90,35 @@ class MOFramePopup(MOFrameMenuBase):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(5)
+        left = QWidget(self)
+        right = QWidget(self)
+        top = QWidget(self)
+        layoutLR = QHBoxLayout(top)
+        layoutLR.addWidget(left)
+        layoutLR.addWidget(right)
+
+        layout1 = QVBoxLayout(left)
+        layout1.setContentsMargins(5, 5, 5, 5)
+        layout1.setSpacing(5)
+        layout2 = QVBoxLayout(right)
+        layout2.setContentsMargins(5, 5, 5, 5)
+        layout2.setSpacing(5)
 
         layout.addWidget(MOFrameControlButton(self, "close menu", self.closeMenu))
-        layout.addItem(QtWidgets.QSpacerItem(
+        layout.addWidget(top)
+
+        layout1.addWidget(MOFrameControlButton(self, "All lights ON", self.allLightsOn))
+        layout1.addWidget(MOFrameControlButton(self, "   ..on for one hour", lambda f: self.allLightsOffTimer(3600.0 * 1000)))
+        layout1.addWidget(MOFrameControlButton(self, "   ..on for two hours", lambda f: self.allLightsOffTimer(2 * 3600.0 * 1000)))
+        layout1.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
-        layout.addWidget(MOFrameControlButton(self, "All lights OFF", self.allLightsOff))
-        layout.addWidget(MOFrameControlButton(self, "   ..off for one hour", lambda f: self.allLightsOnTimer(3600.0 * 1000)))
-        layout.addWidget(MOFrameControlButton(self, "   ..off for two hours", lambda f: self.allLightsOnTimer(2 * 3600.0 * 1000)))
-        layout.addItem(QtWidgets.QSpacerItem(
-            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
-        layout.addWidget(MOFrameControlButton(self, "All lights ON", self.allLightsOn))
-        layout.addWidget(MOFrameControlButton(self, "   ..on for one hour", lambda f: self.allLightsOffTimer(3600.0 * 1000)))
-        layout.addWidget(MOFrameControlButton(self, "   ..on for two hours", lambda f: self.allLightsOffTimer(2 * 3600.0 * 1000)))
-        layout.addItem(QtWidgets.QSpacerItem(
+
+        layout2.addWidget(MOFrameControlButton(self, "All lights OFF", self.allLightsOff))
+        layout2.addWidget(MOFrameControlButton(self, "   ..off for one hour", lambda f: self.allLightsOnTimer(3600.0 * 1000)))
+        layout2.addWidget(MOFrameControlButton(self, "   ..off for two hours", lambda f: self.allLightsOnTimer(2 * 3600.0 * 1000)))
+        layout2.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
 
         self.lightstimer = QTimer(self)
@@ -344,7 +357,7 @@ QLabel {
         if self.commands:
             cmd = getattr(self.commands, command, None)
             if callable(cmd):
-                return cmd()
+                return cmd(self)
         return "undefined: {}".format(command)
 
     def flashStatus(self, text, timeout=1000):
@@ -519,3 +532,13 @@ QLabel {
         s = 70 * (1.0 - z)
         self.marker.setGeometry(ww * x, hh * (1.0 - y), 30 + s, 30 + s)
         self.marker.show()
+
+    def setDarkness(self, darkness=0x00):
+        """
+        :param darkness: 0x00-0xff where 0xff is black
+        :return:
+        """
+        for ww in self.central_widgets:
+            ww.photoframe.darkenBy = darkness
+
+

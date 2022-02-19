@@ -21,15 +21,17 @@ def allLightsSet(status):
     return "error" if errors else "ok"
 
 
-def cmdAllLightsOn():
+def cmdAllLightsOn(frame):
     """
     """
+    frame.setDarkness(0x00)
     return allLightsSet("On")
 
 
-def cmdAllLightsOff():
+def cmdAllLightsOff(frame):
     """
     """
+    frame.setDarkness(0xcc)
     return allLightsSet("Off")
 
 

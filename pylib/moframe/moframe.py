@@ -86,6 +86,77 @@ class MOFrameMenuBase(QWidget):
         qp.end()
 
 
+class MOFramePopup(MOFrameMenuBase):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(5)
+
+        layout.addWidget(MOFrameControlButton(self, "close menu", self.closeMenu))
+        layout.addItem(QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+        layout.addWidget(MOFrameControlButton(self, "All lights OFF", self.allLightsOff))
+        layout.addWidget(MOFrameControlButton(self, "   ..off for one hour", lambda f: self.allLightsOnTimer(3600.0 * 1000)))
+        layout.addWidget(MOFrameControlButton(self, "   ..off for two hours", lambda f: self.allLightsOnTimer(2 * 3600.0 * 1000)))
+        layout.addItem(QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+        layout.addWidget(MOFrameControlButton(self, "All lights ON", self.allLightsOn))
+        layout.addWidget(MOFrameControlButton(self, "   ..on for one hour", lambda f: self.allLightsOffTimer(3600.0 * 1000)))
+        layout.addWidget(MOFrameControlButton(self, "   ..on for two hours", lambda f: self.allLightsOffTimer(2 * 3600.0 * 1000)))
+        layout.addItem(QtWidgets.QSpacerItem(
+            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+
+        self.lightstimer = QTimer(self)
+        self.lightstimer.setSingleShot(True)
+        self.lightstimer.timeout.connect(self.toggle)
+
+        self.lastLightState = 0  # (-1, 0, 1) = (off, unknown, on)
+
+    def toggle(self):
+        """
+        """
+        if self.lastLightState > 0:
+            self.allLightsOff(None)
+        elif self.lastLightState < 0:
+            self.allLightsOn(None)
+
+    def closeMenu(self, _frame=None):
+        """
+        """
+        self.parent.hideMenu()
+
+    def allLightsOff(self, _frame=None):
+        """
+        """
+        print(self.parent.customCommand("cmdAllLightsOff"))
+        print(self.parent.customCommand("cmdAllLightsOff"))
+        self.lastLightState = -1
+        self.lightstimer.stop()
+        self.closeMenu()
+
+    def allLightsOn(self, _frame=None):
+        """
+        """
+        print(self.parent.customCommand("cmdAllLightsOn"))
+        print(self.parent.customCommand("cmdAllLightsOn"))
+        self.lastLightState = 1
+        self.closeMenu()
+
+    def allLightsOnTimer(self, delay=10000.0):
+        """
+        """
+        self.allLightsOff(None)
+        self.lightstimer.start(delay)
+
+    def allLightsOffTimer(self, delay=10000.0):
+        """
+        """
+        self.allLightsOn(None)
+        self.lightstimer.start(delay)
+
+
 class MOFrameMenu(MOFrameMenuBase):
     def __init__(self, parent):
         super().__init__(parent)
@@ -98,6 +169,15 @@ class MOFrameMenu(MOFrameMenuBase):
             layout.addWidget(button)
         layout.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+        layout.addWidget(MOFrameControlButton(self, "💡 lights", self.showLights))
+
+    def showLights(self, frame):
+        """
+
+        :param frame:
+        :return:
+        """
+        self.parent.showPopup()
 
     def widgets(self):
         """
@@ -121,12 +201,6 @@ class MOFrameControls(MOFrameMenuBase):
         layout.addWidget(MOFrameControlButton(self, "slower", self.slower))
         layout.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
-
-    def widgets(self):
-        """
-        Returns: List of widgets to make buttons for.
-        """
-        return self.parent.central_widgets
 
     def speedText(self):
         s = self.parent.currentWidget().getStatus()
@@ -194,9 +268,10 @@ class MOStatusLabel(QLabel):
 class MOFrameWindow(QMainWindow):
     reverse = False
 
-    def __init__(self, cfg=None):
+    def __init__(self, cfg=None, cmd=None):
         QMainWindow.__init__(self)
         self.config = cfg or {}
+        self.commands = cmd or None
         cfg.setdefault("menu-button-font", "30px bold sans-serif")
 
         self.setWindowTitle("MOFrame")
@@ -241,6 +316,7 @@ QLabel {
 
         self.menu = MOFrameMenu(self)
         self.controls = MOFrameControls(self)
+        self.popupLights = MOFramePopup(self)
         self.closebutton = MOFrameControlButton(self, "close menu", lambda _: self.menutimer.start(0))
         self.closebutton.hide()
         self.marker = QPushButton("X", self)
@@ -260,6 +336,16 @@ QLabel {
         self.menutimer.setSingleShot(True)
         self.menutimer.timeout.connect(self.hideMenu)
         self.hideMenu()
+        self.activePopup = None
+
+    def customCommand(self, command):
+        """
+        """
+        if self.commands:
+            cmd = getattr(self.commands, command, None)
+            if callable(cmd):
+                return cmd()
+        return "undefined: {}".format(command)
 
     def flashStatus(self, text, timeout=1000):
         """
@@ -302,13 +388,14 @@ QLabel {
         """
         Display the menu and start its timeout.
         """
-        app = QtWidgets.QApplication.instance()
-        app.setOverrideCursor(Qt.ArrowCursor)
-        hidedelay = self.config.get("menu-delay", 5000.0)
-        self.menu.show()
-        self.closebutton.show()
-        self.controls.show()
-        self.menutimer.start(hidedelay)
+        if not self.activePopup:
+            app = QtWidgets.QApplication.instance()
+            app.setOverrideCursor(Qt.ArrowCursor)
+            hidedelay = self.config.get("menu-delay", 5000.0)
+            self.menu.show()
+            self.closebutton.show()
+            self.controls.show()
+            self.menutimer.start(hidedelay)
 
     def hideMenu(self):
         """
@@ -319,7 +406,21 @@ QLabel {
         self.menu.hide()
         self.controls.hide()
         self.closebutton.hide()
+        self.popupLights.hide()
         app.setOverrideCursor(Qt.BlankCursor)
+        self.activePopup = None
+
+    def showPopup(self):
+        """
+        Show a popup and adjust close timer.
+        """
+        self.hideMenu()
+        app = QtWidgets.QApplication.instance()
+        app.setOverrideCursor(Qt.ArrowCursor)
+        hidedelay = 5 * self.config.get("menu-delay", 5000.0)
+        self.popupLights.show()
+        self.menutimer.start(hidedelay)
+        self.activePopup = self.popupLights
 
     def doLater(self, cb, delay=0):
         """
@@ -370,6 +471,7 @@ QLabel {
         self.menu.setGeometry(ww - 300, 0, 300, hh)
         self.controls.setGeometry(0, 0, 300, hh)
         self.closebutton.setGeometry(ww / 2 - 150, 50, 300, 100)
+        self.popupLights.setGeometry(10, 10, ww - 20, hh - 20)
         self.statusLabel.setGeometry(ww * 0.25, hh * 0.8, ww * 0.5, hh * 0.15)
 
     def keyPressEvent(self, event):

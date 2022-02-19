@@ -539,6 +539,7 @@ QLabel {
         :return:
         """
         for ww in self.central_widgets:
-            ww.photoframe.darkenBy = darkness
+            if hasattr(ww, "photoframe"):
+                ww.photoframe.darkenBy = darkness
 
 

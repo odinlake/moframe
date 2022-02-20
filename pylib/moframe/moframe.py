@@ -6,10 +6,13 @@ import time
 
 
 class MOFrameButtonBase(QPushButton):
-    def __init__(self, parent, command=None):
+    def __init__(self, parent, command=None, icon=None):
         super().__init__(parent)
+        self.icon = None
         if command:
             self.clicked.connect(command)
+        if icon == "light":
+            self.icon = QtGui.QIcon('./resource/lightbulb.svg')
         # style background doesn't work on rpi
         pal = self.palette()
         pal.setColor(QtGui.QPalette.Button, QtGui.QColor(20, 10, 10))
@@ -37,6 +40,8 @@ class MOFrameButtonBase(QPushButton):
         brush2 = QtGui.QBrush(QtGui.QColor(0xaa, 0x00, 0x00, 0xff), Qt.Dense7Pattern)
         qp.fillRect(0, 0, w, h, brush1)
         qp.fillRect(0, 0, w, h, brush2)
+        if self.icon:
+            self.icon.paint(qp, QtCore.QRect(10, 10, h - 20, h - 20))
         qp.drawText(0, 0, w, h, Qt.AlignCenter | Qt.AlignVCenter, self.text())
         qp.setPen(QtGui.QColor(0xff, 0xff, 0xff, 0x88))
         qp.drawRect(0, 0, w-1, h-1)
@@ -53,8 +58,8 @@ class MOFrameButton(MOFrameButtonBase):
 
 
 class MOFrameControlButton(MOFrameButtonBase):
-    def __init__(self, parent, text, command):
-        super().__init__(parent)
+    def __init__(self, parent, text, command, icon=None):
+        super().__init__(parent, icon=icon)
         self.parent = parent
         self.setText(text)
         self.clicked.connect(lambda: command(parent.parent))
@@ -86,6 +91,54 @@ class MOFrameMenuBase(QWidget):
         qp.end()
 
 
+class MOTimeDisplay(QLabel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.reftimer = None
+        self.setAlignment(Qt.AlignCenter)
+        self.setWordWrap(True)
+        self.setAutoFillBackground(False)
+        self.setStyleSheet("color: #998888; background-color: rgba(0, 0, 0, 128);")
+        self.setFont(QtGui.QFont('Arial', 50))
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(False)
+        self.timer.timeout.connect(self.timeout)
+        self.setGeometry(100, 100, 500, 70)
+
+    def updateText(self):
+        """
+        Update text with time left. Hide and stop if none is left.
+        """
+        if self.reftimer:
+            seconds = int(self.reftimer.remainingTime() / 1000.0 + 0.5)
+            if seconds > 0:
+                if seconds < 5:
+                    self.setText("done" + "." * seconds)
+                else:
+                    hours = seconds // 3600
+                    seconds -= hours * 3600
+                    minutes = seconds // 60
+                    seconds -= minutes * 60
+                    self.setText("{}:{}:{} time left".format(hours, minutes, seconds))
+            else:
+                self.timer.stop()
+                self.hide()
+                self.reftimer = None
+
+    def timeout(self):
+        """
+        Used to hide the menu after some seconds of inactivity.
+        """
+        self.updateText()
+
+    def show(self, reftimer, timeout=200):
+        super().show()
+        self.reftimer = reftimer
+        self.timer.start(timeout)
+        self.updateText()
+
+
 class MOFramePopup(MOFrameMenuBase):
     def __init__(self, parent):
         super().__init__(parent)
@@ -106,16 +159,18 @@ class MOFramePopup(MOFrameMenuBase):
         layout2.setContentsMargins(5, 5, 5, 5)
         layout2.setSpacing(5)
 
-        layout.addWidget(MOFrameControlButton(self, "close menu", self.closeMenu))
         layout.addWidget(top)
+        layout.addWidget(MOFrameControlButton(self, "close menu", self.closeMenu))
 
         layout1.addWidget(MOFrameControlButton(self, "All lights ON", self.allLightsOn))
+        layout1.addWidget(MOFrameControlButton(self, "   ..on for ten seconds", lambda f: self.allLightsOffTimer(10 * 1000)))
         layout1.addWidget(MOFrameControlButton(self, "   ..on for one hour", lambda f: self.allLightsOffTimer(3600.0 * 1000)))
         layout1.addWidget(MOFrameControlButton(self, "   ..on for two hours", lambda f: self.allLightsOffTimer(2 * 3600.0 * 1000)))
         layout1.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
 
         layout2.addWidget(MOFrameControlButton(self, "All lights OFF", self.allLightsOff))
+        layout2.addWidget(MOFrameControlButton(self, "   ..off for ten seconds", lambda f: self.allLightsOnTimer(10 * 1000)))
         layout2.addWidget(MOFrameControlButton(self, "   ..off for one hour", lambda f: self.allLightsOnTimer(3600.0 * 1000)))
         layout2.addWidget(MOFrameControlButton(self, "   ..off for two hours", lambda f: self.allLightsOnTimer(2 * 3600.0 * 1000)))
         layout2.addItem(QtWidgets.QSpacerItem(
@@ -143,31 +198,32 @@ class MOFramePopup(MOFrameMenuBase):
     def allLightsOff(self, _frame=None):
         """
         """
-        print(self.parent.customCommand("cmdAllLightsOff"))
+        self.closeMenu()
         print(self.parent.customCommand("cmdAllLightsOff"))
         self.lastLightState = -1
         self.lightstimer.stop()
-        self.closeMenu()
 
     def allLightsOn(self, _frame=None):
         """
         """
-        print(self.parent.customCommand("cmdAllLightsOn"))
+        self.closeMenu()
         print(self.parent.customCommand("cmdAllLightsOn"))
         self.lastLightState = 1
-        self.closeMenu()
+        self.lightstimer.stop()
 
     def allLightsOnTimer(self, delay=10000.0):
         """
         """
         self.allLightsOff(None)
         self.lightstimer.start(delay)
+        self.parent.timedisplay.show(self.lightstimer)
 
     def allLightsOffTimer(self, delay=10000.0):
         """
         """
         self.allLightsOn(None)
         self.lightstimer.start(delay)
+        self.parent.timedisplay.show(self.lightstimer)
 
 
 class MOFrameMenu(MOFrameMenuBase):
@@ -182,7 +238,9 @@ class MOFrameMenu(MOFrameMenuBase):
             layout.addWidget(button)
         layout.addItem(QtWidgets.QSpacerItem(
             20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
-        layout.addWidget(MOFrameControlButton(self, "💡 lights", self.showLights))
+
+        lightsbutton = MOFrameControlButton(self, "lights", self.showLights, icon="light")
+        layout.addWidget(lightsbutton)
 
     def showLights(self, frame):
         """
@@ -331,7 +389,10 @@ QLabel {
         self.controls = MOFrameControls(self)
         self.popupLights = MOFramePopup(self)
         self.closebutton = MOFrameControlButton(self, "close menu", lambda _: self.menutimer.start(0))
+        self.timedisplay = MOTimeDisplay(self)
+
         self.closebutton.hide()
+        self.timedisplay.hide()
         self.marker = QPushButton("X", self)
         self.marker.hide()
         self.statusLabel = MOStatusLabel(self, "this is the status text")
@@ -541,5 +602,6 @@ QLabel {
         for ww in self.central_widgets:
             if hasattr(ww, "photoframe"):
                 ww.photoframe.darkenBy = darkness
+                ww.repaint()
 
 

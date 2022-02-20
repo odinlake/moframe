@@ -31,7 +31,7 @@ def cmdAllLightsOn(frame):
 def cmdAllLightsOff(frame):
     """
     """
-    frame.setDarkness(0xcc)
+    frame.setDarkness(0xe0)
     return allLightsSet("Off")
 
 

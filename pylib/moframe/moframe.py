@@ -2,7 +2,8 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QLabel, QPushButton
 from PyQt5.QtCore import QSize, Qt, QTimer, QEvent
 from collections import deque
-import time
+from datetime import datetime
+import re
 
 
 class MOFrameButtonBase(QPushButton):
@@ -391,34 +392,37 @@ QLabel {
         self.closebutton = MOFrameControlButton(self, "close menu", lambda _: self.menutimer.start(0))
         self.timedisplay = MOTimeDisplay(self)
 
+        self.menutimer = QTimer(self)
+        self.menutimer.setSingleShot(True)
+        self.menutimer.timeout.connect(self.hideMenu)
+        self.triggerTimer = QTimer(self)
+        self.triggerTimer.timeout.connect(self.checkTriggers)
+        self.triggerTimer.start(500)
+
         self.closebutton.hide()
         self.timedisplay.hide()
-        self.marker = QPushButton("X", self)
-        self.marker.hide()
         self.statusLabel = MOStatusLabel(self, "this is the status text")
         self.statusLabel.hide()
         self.setWidget(0)
-        self.utilTimer = QTimer(self)
-        self.utilTimer.timeout.connect(self.utilLoop)
-        self.utilTimer.start(0.5)
         self.skywriterQueue = deque()
         self.skywriterTimeout = 0
         self.pointer = (0, 0)
         self.widgetindex = 0
         self.setMouseTracking(True)
-        self.menutimer = QTimer(self)
-        self.menutimer.setSingleShot(True)
-        self.menutimer.timeout.connect(self.hideMenu)
         self.hideMenu()
         self.activePopup = None
+        self.lastTriggerTime = None
+        tts = self.customCommand("cmdGetTriggers")
+        tc = getattr(self.commands, "cmdTrigger", None)
+        self.triggers = (tts, tc) if isinstance(tts, list) and callable(tc) else (None, None)
 
-    def customCommand(self, command):
+    def customCommand(self, command, args=()):
         """
         """
         if self.commands:
             cmd = getattr(self.commands, command, None)
             if callable(cmd):
-                return cmd(self)
+                return cmd(self, *args)
         return "undefined: {}".format(command)
 
     def flashStatus(self, text, timeout=1000):
@@ -427,17 +431,6 @@ QLabel {
         """
         self.statusLabel.setText(text)
         self.statusLabel.show(timeout)
-
-    def utilLoop(self):
-        t = self.skywriterTimeout
-        if t and time.time() - t > 3.0:
-            self.marker.hide()
-            self.skywriterTimeout = 0
-        while self.skywriterQueue:
-            args = self.skywriterQueue.popleft()
-            if args[0] == "move":
-                self.skywriterMove(*args[1:])
-            self.skywriterTimeout = time.time()
 
     def setWidget(self, idx):
         """
@@ -529,8 +522,6 @@ QLabel {
         elif event.type() in (QEvent.MouseMove,):
             pt = self.mapFromGlobal(event.globalPos())
             self.pointer = (pt.x(), pt.y())
-            if pt.x() and pt.y():
-                self.skywriterMove(pt.x(), pt.y(), 30)
         return res
 
     def resizeEvent(self, event):
@@ -579,21 +570,6 @@ QLabel {
             event: Qt event.
         """
         self.showFullScreen()
-
-    def skywriterMove(self, x, y, z):
-        """
-        Skywriter API forwarded and handled on qt event loop (do not call on skywriter thread).
-
-        Args:
-            x: [0, 1] x coordinate on skyhat
-            y: [0, 1] y coordinate on skyhat
-            z: [0, 1], higher when hand is close or covers more of skyhat
-        """
-        ww, hh = self.width(), self.height()
-        s = 70 * (1.0 - z)
-        self.marker.setGeometry(ww * x, hh * (1.0 - y), 30 + s, 30 + s)
-        self.marker.show()
-
     def setDarkness(self, darkness=0x00):
         """
         :param darkness: 0x00-0xff where 0xff is black
@@ -604,4 +580,18 @@ QLabel {
                 ww.photoframe.darkenBy = darkness
                 ww.repaint()
 
+    def checkTriggers(self):
+        """
+        Once a minute, check if any custom triggers are matched.
+        """
+        tts, tc = self.triggers
+        if tts and tc:
+            triggerTime = datetime.now()
+            if self.lastTriggerTime is None or triggerTime.minute != self.lastTriggerTime.minute:
+                self.lastTriggerTime = triggerTime
+                triggerTimeStr = triggerTime.strftime("%Y-%m-%d %H:%M %a")
+                for trigger in tts:
+                    if re.search(trigger, triggerTimeStr):
+                        res = tc(self, trigger, triggerTime)
+                        print("Trigger Time [{}] {}".format(triggerTimeStr, res))
 

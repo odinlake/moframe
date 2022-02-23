@@ -2,7 +2,7 @@ import urllib.request
 
 
 PATT_DOMOTICZ_LIGHTS = "http://pi.home:8081/json.htm?type=command&param=switchlight&idx={}&switchcmd={}"
-IDX_DOMOTICZ_LIGHTS = [87] # [89, 91]  # test: 87
+IDX_DOMOTICZ_LIGHTS = [89, 91]  # test: 87
 
 
 def allLightsSet(status):
@@ -41,16 +41,22 @@ def cmdGetTriggers(frame):
     where aaa is the weekday as Mon, Tue, ...
     """
     return [
-        "08:00",
+        "07:00",
+        "09:00",
         "22:00",
+        "00:00",
     ]
 
 def cmdTrigger(frame, trigger, triggerTime):
     """
     If current time matches a trigger regex returned by cmdGetTriggers this method will be called.
     """
-    if trigger == "08:00":
-        frame.setDarkness(0x00)
+    if trigger == "07:00":
+        frame.setDarkness(0x80)
+    elif trigger == "09:00":
+        return cmdAllLightsOn(frame)
     elif trigger == "22:00":
-        frame.setDarkness(0xe0)
+        frame.setDarkness(0x80)
+    elif trigger == "00:00":
+        return cmdAllLightsOff(frame)
     return "ok"

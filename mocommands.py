@@ -2,37 +2,46 @@ import urllib.request
 
 
 PATT_DOMOTICZ_LIGHTS = "http://pi.home:8081/json.htm?type=command&param=switchlight&idx={}&switchcmd={}"
-IDX_DOMOTICZ_LIGHTS = [89, 91]  # test: 87
+IDX_DOMOTICZ_LIGHTS = {
+    "alcoves": 89,
+    "sofa": 91,
+    "test": 87,
+}
 
 
-def allLightsSet(status):
+def cmdGetDevices(frame):
+    """
+    A list of device names that will be controllable.
+    """
+    return [
+        "ALL",
+        "alcoves",
+        "sofa",
+    ]
+
+def cmdDeviceSet(frame, name, status):
     """
     """
+    print(name, status)
     errors = []
-    for idx in IDX_DOMOTICZ_LIGHTS:
+    if name == "ALL":
+        frame.setDarkness(0x00 if status == "On" else 0xe0)
+        for name2 in cmdGetDevices(frame):
+            if name2 != "ALL":
+                res = cmdDeviceSet(frame, name2, status)
+                if res == "error":
+                    errors.append("unknown error")
+    else:
+        idx = IDX_DOMOTICZ_LIGHTS[name]
         url = PATT_DOMOTICZ_LIGHTS.format(idx, status)
         print("calling: {}".format(url))
         try:
             with urllib.request.urlopen(url) as response:
-               response.read()
+                response.read()
         except urllib.error.HTTPError as e:
             errors.append(e.code())
             print("...error: {} {}".format(e.code(), e.read()))
     return "error" if errors else "ok"
-
-
-def cmdAllLightsOn(frame):
-    """
-    """
-    frame.setDarkness(0x00)
-    return allLightsSet("On")
-
-
-def cmdAllLightsOff(frame):
-    """
-    """
-    frame.setDarkness(0xe0)
-    return allLightsSet("Off")
 
 
 def cmdGetTriggers(frame):

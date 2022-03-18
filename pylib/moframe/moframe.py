@@ -144,6 +144,8 @@ class MOFramePopup(MOFrameMenuBase):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
+        self.lightstimer = {}
+        self.lastLightState = {}  # (-1, 0, 1) = (off, unknown, on)
 
         layout = QVBoxLayout(self)
         left = QWidget(self)
@@ -163,32 +165,30 @@ class MOFramePopup(MOFrameMenuBase):
         layout.addWidget(top)
         layout.addWidget(MOFrameControlButton(self, "close menu", self.closeMenu))
 
-        layout1.addWidget(MOFrameControlButton(self, "All lights ON", self.allLightsOn))
-        layout1.addWidget(MOFrameControlButton(self, "   ..on for ten seconds", lambda f: self.allLightsOffTimer(10 * 1000)))
-        layout1.addWidget(MOFrameControlButton(self, "   ..on for one hour", lambda f: self.allLightsOffTimer(3600.0 * 1000)))
-        layout1.addWidget(MOFrameControlButton(self, "   ..on for two hours", lambda f: self.allLightsOffTimer(2 * 3600.0 * 1000)))
-        layout1.addItem(QtWidgets.QSpacerItem(
-            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+        for name in self.parent.customCommand("cmdGetDevices"):
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(lambda: self.toggle(name))
+            self.lightstimer[name] = timer
+            self.lastLightState[name] = 0
 
-        layout2.addWidget(MOFrameControlButton(self, "All lights OFF", self.allLightsOff))
-        layout2.addWidget(MOFrameControlButton(self, "   ..off for ten seconds", lambda f: self.allLightsOnTimer(10 * 1000)))
-        layout2.addWidget(MOFrameControlButton(self, "   ..off for one hour", lambda f: self.allLightsOnTimer(3600.0 * 1000)))
-        layout2.addWidget(MOFrameControlButton(self, "   ..off for two hours", lambda f: self.allLightsOnTimer(2 * 3600.0 * 1000)))
-        layout2.addItem(QtWidgets.QSpacerItem(
-            20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding))
+            row = QWidget(self)
+            layout.addWidget(row)
+            rowlayout = QHBoxLayout(row)
+            rowlayout.addWidget(MOFrameControlButton(self, name, lambda f: None))
+            rowlayout.addWidget(MOFrameControlButton(self, "Turn On", lambda f, name=name: self.deviceOn(name)))
+            rowlayout.addWidget(MOFrameControlButton(self, "+1h", lambda f, name=name: self.deviceOnTimer(name, 3600.0 * 1000)))
+            rowlayout.addWidget(MOFrameControlButton(self, "+2h", lambda f, name=name: self.deviceOnTimer(name, 2 * 3600.0 * 1000)))
+            rowlayout.addWidget(MOFrameControlButton(self, "Turn Off", lambda f, name=name: self.deviceOff(name)))
+            rowlayout.addWidget(MOFrameControlButton(self, "-1h", lambda f, name=name: self.deviceOffTimer(name, 3600.0 * 1000)))
+            rowlayout.addWidget(MOFrameControlButton(self, "-2h", lambda f, name=name: self.deviceOffTimer(name, 2 * 3600.0 * 1000)))
 
-        self.lightstimer = QTimer(self)
-        self.lightstimer.setSingleShot(True)
-        self.lightstimer.timeout.connect(self.toggle)
-
-        self.lastLightState = 0  # (-1, 0, 1) = (off, unknown, on)
-
-    def toggle(self):
+    def toggle(self, name):
         """
         """
-        if self.lastLightState > 0:
+        if self.lastLightState[name] > 0:
             self.allLightsOff(None)
-        elif self.lastLightState < 0:
+        elif self.lastLightState[name] < 0:
             self.allLightsOn(None)
 
     def closeMenu(self, _frame=None):
@@ -196,35 +196,35 @@ class MOFramePopup(MOFrameMenuBase):
         """
         self.parent.hideMenu()
 
-    def allLightsOff(self, _frame=None):
+    def deviceOff(self, name):
         """
         """
         self.closeMenu()
-        print(self.parent.customCommand("cmdAllLightsOff"))
-        self.lastLightState = -1
-        self.lightstimer.stop()
+        print(self.parent.customCommand("cmdDeviceSet", name, "Off"))
+        self.lastLightState[name] = -1
+        self.lightstimer[name].stop()
 
-    def allLightsOn(self, _frame=None):
+    def deviceOn(self, name):
         """
         """
         self.closeMenu()
-        print(self.parent.customCommand("cmdAllLightsOn"))
-        self.lastLightState = 1
-        self.lightstimer.stop()
+        print(self.parent.customCommand("cmdDeviceSet", name, "On"))
+        self.lastLightState[name] = 1
+        self.lightstimer[name].stop()
 
-    def allLightsOnTimer(self, delay=10000.0):
+    def deviceOnTimer(self, name, delay=10000.0):
         """
         """
-        self.allLightsOff(None)
-        self.lightstimer.start(delay)
-        self.parent.timedisplay.show(self.lightstimer)
+        self.deviceOff(name)
+        self.lightstimer[name].start(delay)
+        self.parent.timedisplay.show(self.lightstimer[name])
 
-    def allLightsOffTimer(self, delay=10000.0):
+    def deviceOffTimer(self, name, delay=10000.0):
         """
         """
-        self.allLightsOn(None)
-        self.lightstimer.start(delay)
-        self.parent.timedisplay.show(self.lightstimer)
+        self.deviceOn(name)
+        self.lightstimer[name].start(delay)
+        self.parent.timedisplay.show(self.lightstimer[name])
 
 
 class MOFrameMenu(MOFrameMenuBase):
@@ -416,7 +416,7 @@ QLabel {
         tc = getattr(self.commands, "cmdTrigger", None)
         self.triggers = (tts, tc) if isinstance(tts, list) and callable(tc) else (None, None)
 
-    def customCommand(self, command, args=()):
+    def customCommand(self, command, *args):
         """
         """
         if self.commands:
@@ -570,6 +570,7 @@ QLabel {
             event: Qt event.
         """
         self.showFullScreen()
+
     def setDarkness(self, darkness=0x00):
         """
         :param darkness: 0x00-0xff where 0xff is black

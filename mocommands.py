@@ -63,9 +63,9 @@ def cmdTrigger(frame, trigger, triggerTime):
     if trigger == "07:00":
         frame.setDarkness(0x80)
     elif trigger == "09:00":
-        return cmdAllLightsOn(frame)
+        return cmdDeviceSet(frame,  "ALL", "On")
     elif trigger == "22:00":
         frame.setDarkness(0x80)
     elif trigger == "00:00":
-        return cmdAllLightsOff(frame)
+        return cmdDeviceSet(frame,  "ALL", "Off")
     return "ok"

@@ -3,8 +3,8 @@ import urllib.request
 
 PATT_DOMOTICZ_LIGHTS = "http://pi.home:8081/json.htm?type=command&param=switchlight&idx={}&switchcmd={}"
 IDX_DOMOTICZ_LIGHTS = {
-    "alcoves": 89,
-    "sofa": 91,
+    "alcoves": 91,
+    "sofa": 89,
     "test": 87,
 }
 
@@ -17,6 +17,7 @@ def cmdGetDevices(frame):
         "ALL",
         "alcoves",
         "sofa",
+        "frame",
     ]
 
 def cmdDeviceSet(frame, name, status):
@@ -31,6 +32,10 @@ def cmdDeviceSet(frame, name, status):
                 res = cmdDeviceSet(frame, name2, status)
                 if res == "error":
                     errors.append("unknown error")
+    elif name == "frame":
+        darkn = frame.getDarkness()
+        ndark = (0xff + darkn) / 2 if darkn < 0xf0 else 0xff
+        frame.setDarkness(ndark if status == "Off" else 0x00)
     else:
         idx = IDX_DOMOTICZ_LIGHTS[name]
         url = PATT_DOMOTICZ_LIGHTS.format(idx, status)

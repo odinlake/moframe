@@ -581,6 +581,15 @@ QLabel {
                 ww.photoframe.darkenBy = darkness
                 ww.repaint()
 
+    def getDarkness(self):
+        """
+        :return: Amount of alpha by which photos are darkened.
+        """
+        for ww in self.central_widgets:
+            if hasattr(ww, "photoframe"):
+                return ww.photoframe.darkenBy or 0x00
+        return 0x00
+
     def checkTriggers(self):
         """
         Once a minute, check if any custom triggers are matched.

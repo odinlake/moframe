@@ -43,7 +43,7 @@ def cmdDeviceSet(frame, name, status):
         try:
             with urllib.request.urlopen(url) as response:
                 response.read()
-        except urllib.error.HTTPError as e:
+        except (urllib.error.HTTPError, urllib.error.URLError) as e:
             errors.append(e.code())
             print("...error: {} {}".format(e.code(), e.read()))
     return "error" if errors else "ok"

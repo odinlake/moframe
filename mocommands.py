@@ -1,4 +1,5 @@
 import urllib.request
+import traceback
 
 
 PATT_DOMOTICZ_LIGHTS = "http://pi.home:8081/json.htm?type=command&param=switchlight&idx={}&switchcmd={}"
@@ -43,9 +44,13 @@ def cmdDeviceSet(frame, name, status):
         try:
             with urllib.request.urlopen(url) as response:
                 response.read()
-        except (urllib.error.HTTPError, urllib.error.URLError) as e:
+        except urllib.error.HTTPError as e:
             errors.append(e.code())
-            print("...error: {} {}".format(e.code(), e.read()))
+            print("http error: {} {}".format(e.code(), e.read()))
+        except Exception as e:
+            print("unexpected error: {}".format(e))
+            traceback.print_exc()
+
     return "error" if errors else "ok"
 
 
